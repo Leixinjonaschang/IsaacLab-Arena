@@ -41,7 +41,8 @@ dev = [
 # Isaac Sim from its base image and submodule, undisturbed by these pins.
 [dependency-groups]
 isaacsim = [
-    "isaaclab[isaacsim,all]==3.0.0b2",
+    # The viser extra enables the `--viz viser` web visualizer backend.
+    "isaaclab[isaacsim,all,viser]==3.0.0b2",
     "rsl-rl-lib==5.0.1",
     # QP solver for the Pink IK stack (whole-body control). The isaaclab wheel
     # does not pull it; the Docker build installs it explicitly. Pinned to the
@@ -74,7 +75,10 @@ index-strategy = "first-index"
 # Pin numpy to the exact version Isaac Sim requires: isaacsim-kernel needs
 # ==2.3.1 and numba needs <2.5. An override (not a plain dep) is needed to also
 # beat a transitive constraint that would otherwise pull numpy<2.
-override-dependencies = ["numpy==2.3.1"]
+# websockets: isaacsim-kernel hard-pins ==12.0, but viser (the `--viz viser`
+# visualizer backend) needs >=13.1 for websockets.asyncio. Override to the
+# viser-compatible range; Isaac Sim works fine with websockets 16.x.
+override-dependencies = ["numpy==2.3.1", "websockets>=13.1,<17"]
 # Isaac Lab 3.0 Beta 2 does not correctly pin its dependencies: the published
 # wheel declares these transitive deps too broadly, so we constrain them to
 # working versions here.
