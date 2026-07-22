@@ -100,3 +100,5 @@ core.*
 
 # uv venv (Arena native install)
 .venv*/
+
+.codegraph/
