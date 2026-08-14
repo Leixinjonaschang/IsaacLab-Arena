@@ -115,13 +115,12 @@ Environment Description
             embodiment.camera_config.robot_pov_cam.offset = CameraCfg.OffsetCfg(
                 pos=camera_offset.position_xyz, rot=camera_offset.rotation_xyzw, convention="opengl"
             )
-            kitchen_background = self.asset_registry.get_asset_by_name("lightwheel_robocasa_kitchen")(
-                style_id=args_cli.kitchen_style
-            )
+            kitchen_background = self.asset_registry.get_asset_by_name(args_cli.kitchen_background)()
+            kitchen_prim_path = f"{{ENV_REGEX_NS}}/{kitchen_background.name}"
 
             kitchen_counter_top = ObjectReference(
                 name="kitchen_counter_top",
-                prim_path="{ENV_REGEX_NS}/lightwheel_robocasa_kitchen/counter_right_main_group/top_geometry",
+                prim_path=f"{kitchen_prim_path}/counter_right_main_group/top_geometry",
                 parent_asset=kitchen_background,
             )
             kitchen_counter_top.add_relation(IsAnchor())
@@ -145,7 +144,7 @@ Environment Description
             # Create refrigerator reference (OpenableObjectReference)
             refrigerator = OpenableObjectReference(
                 name="refrigerator",
-                prim_path="{ENV_REGEX_NS}/lightwheel_robocasa_kitchen/fridge_main_group",
+                prim_path=f"{kitchen_prim_path}/fridge_main_group",
                 parent_asset=kitchen_background,
                 openable_joint_name="fridge_door_joint",
                 openable_threshold=0.5,
@@ -154,7 +153,7 @@ Environment Description
             # Create refrigerator shelf reference (destination for pick and place)
             refrigerator_shelf = ObjectReference(
                 name="refrigerator_shelf",
-                prim_path="{ENV_REGEX_NS}/lightwheel_robocasa_kitchen/fridge_main_group/Refrigerator034",
+                prim_path=f"{kitchen_prim_path}/fridge_main_group/Refrigerator034",
                 parent_asset=kitchen_background,
             )
 
@@ -229,10 +228,11 @@ Step-by-Step Breakdown
     camera_offset = Pose(position_xyz=(0.12515, 0.0, 0.06776), rotation_xyzw=(0.11204, -0.17712, -0.79108, 0.57469))
     embodiment = self.asset_registry.get_asset_by_name(args_cli.embodiment)(enable_cameras=args_cli.enable_cameras)
     embodiment.camera_config.robot_pov_cam.offset = CameraCfg.OffsetCfg(pos=camera_offset.position_xyz, rot=camera_offset.rotation_xyzw, convention="opengl")
-    kitchen_background = self.asset_registry.get_asset_by_name("lightwheel_robocasa_kitchen")(style_id=args_cli.kitchen_style)
+    kitchen_background = self.asset_registry.get_asset_by_name(args_cli.kitchen_background)()
+    kitchen_prim_path = f"{{ENV_REGEX_NS}}/{kitchen_background.name}"
     kitchen_counter_top = ObjectReference(
         name="kitchen_counter_top",
-        prim_path="{ENV_REGEX_NS}/lightwheel_robocasa_kitchen/counter_right_main_group/top_geometry",
+        prim_path=f"{kitchen_prim_path}/counter_right_main_group/top_geometry",
         parent_asset=kitchen_background,
     )
     kitchen_counter_top.add_relation(IsAnchor())
@@ -352,7 +352,7 @@ See :doc:`../../concepts/scene/index` for scene composition details.
 
 Finally, we assemble all the pieces into a complete, runnable environment. The ``IsaacLabArenaEnvironment`` is the
 top-level container that connects the embodiment (the robot), the scene (the world), and the task (the objective).
-See :doc:`../../concepts/concept_overview` for environment composition details.
+See :doc:`../../concepts/environment/index` for environment composition details.
 
 
 Step 1: Download a Test Dataset
@@ -382,12 +382,13 @@ Replay the downloaded dataset to verify the environment setup:
 
 .. code-block:: bash
 
-   python isaaclab_arena/scripts/imitation_learning/replay_demos.py \
+   python submodules/IsaacLab/scripts/tools/replay_demos.py \
      --viz kit \
      --device cpu \
      --enable_cameras \
      --dataset_file "${DATASET_DIR}/ranch_bottle_into_fridge_annotated.hdf5" \
-     put_item_in_fridge_and_close_door \
+     --external_callback isaaclab_arena.environments.isaaclab_interop.environment_registration_callback \
+     --task put_item_in_fridge_and_close_door \
      --object ranch_dressing_hope_robolab \
      --embodiment gr1_pink
 

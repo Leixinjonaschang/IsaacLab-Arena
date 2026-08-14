@@ -11,7 +11,7 @@ import traceback
 import pytest
 import warp as wp
 
-from isaaclab_arena.tests.utils.subprocess import run_simulation_app_function
+from isaaclab_arena.tests.utils.persistent_simulation_app import run_function_with_persistent_simulation_app
 
 NUM_STEPS = 10
 HEADLESS = True
@@ -53,6 +53,7 @@ def get_test_environment(num_envs: int, pink_ik_enabled: bool):
     from isaaclab_arena.embodiments.g1.g1 import G1WBCJointEmbodiment, G1WBCPinkEmbodiment
     from isaaclab_arena.environments.arena_env_builder import ArenaEnvBuilder
     from isaaclab_arena.environments.isaaclab_arena_environment import IsaacLabArenaEnvironment
+    from isaaclab_arena.environments.isaaclab_arena_manager_based_env_cfg import set_control_rate_50hz
     from isaaclab_arena.scene.scene import Scene
     from isaaclab_arena.utils.pose import Pose
 
@@ -72,6 +73,9 @@ def get_test_environment(num_envs: int, pink_ik_enabled: bool):
         name="g1_standing_test",
         embodiment=embodiment,
         scene=scene,
+        # The whole-body controller requires 50 Hz control; at the 15 Hz default the standing
+        # policy drifts off its initial position.
+        env_cfg_callback=set_control_rate_50hz,
     )
 
     args_cli = get_isaaclab_arena_cli_parser().parse_args([])
@@ -127,7 +131,7 @@ def _test_wbc_joint_standing_idle_actions(simulation_app) -> bool:
 
 @pytest.mark.with_cameras
 def test_wbc_joint_standing_idle_actions_single_env():
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_wbc_joint_standing_idle_actions,
         headless=HEADLESS,
         enable_cameras=ENABLE_CAMERAS,
@@ -165,7 +169,7 @@ def _test_wbc_pink_standing_idle_actions(simulation_app) -> bool:
 
 @pytest.mark.with_cameras
 def test_wbc_pink_standing_idle_actions_single_env():
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_wbc_pink_standing_idle_actions,
         headless=HEADLESS,
         enable_cameras=ENABLE_CAMERAS,

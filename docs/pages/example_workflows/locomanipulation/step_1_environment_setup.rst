@@ -171,7 +171,7 @@ See :doc:`../../concepts/task/index` for task creation details.
 
 Finally, we assemble all the pieces into a complete, runnable environment. The ``IsaacLabArenaEnvironment`` is the
 top-level container that connects your embodiment (the robot), the scene (the world) and the task (the objective).
-See :doc:`../../concepts/concept_overview` for environment composition details.
+See :doc:`../../concepts/environment/index` for environment composition details.
 
 
 Step 1: Download a test dataset
@@ -198,12 +198,13 @@ Replay the downloaded dataset to verify the environment setup
 
 .. code-block:: bash
 
-   python isaaclab_arena/scripts/imitation_learning/replay_demos.py \
+   python submodules/IsaacLab/scripts/tools/replay_demos.py \
      --viz kit \
      --device cpu \
      --enable_cameras \
      --dataset_file ${DATASET_DIR}/arena_g1_loco_manipulation_dataset_generated_small.hdf5 \
-     galileo_g1_locomanip_pick_and_place \
+     --external_callback isaaclab_arena.environments.isaaclab_interop.environment_registration_callback \
+     --task galileo_g1_locomanip_pick_and_place \
      --object brown_box \
      --embodiment g1_wbc_pink
 

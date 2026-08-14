@@ -53,7 +53,7 @@ def _render_tasks_table(spec: ArenaEnvGraphSpec) -> None:
             "description": "—",
             "params": params_str,
         })
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    st.dataframe(rows, hide_index=True, width="stretch")
 
 
 def _render_asset_card(card: AssetCard) -> None:
@@ -62,7 +62,9 @@ def _render_asset_card(card: AssetCard) -> None:
     is_reference = isinstance(spec, ObjectReferenceSpec)
     with st.container(border=True):
         if card.thumbnail_bytes is not None:
-            st.image(card.thumbnail_bytes, use_container_width=True)
+            st.image(card.thumbnail_bytes, width="stretch")
+            if card.is_panorama:
+                st.caption("360° panorama")
         elif is_reference and spec.prim_path is None:
             st.caption("⛔ Resolve prim_path to enable collision-mesh snapshot")
         else:
@@ -79,12 +81,26 @@ def _render_asset_card(card: AssetCard) -> None:
 
 
 def _render_asset_grid(cards: list[AssetCard]) -> None:
-    """Lay out asset cards in a grid."""
-    for start in range(0, len(cards), _ASSET_GRID_COLS):
-        columns = st.columns(_ASSET_GRID_COLS)
-        for column, card in zip(columns, cards[start : start + _ASSET_GRID_COLS]):
+    """Lay out asset cards in a grid; panorama cards span the full width on their own row."""
+    row: list[AssetCard] = []
+
+    def _flush_row() -> None:
+        if not row:
+            return
+        for column, card in zip(st.columns(_ASSET_GRID_COLS), row):
             with column:
                 _render_asset_card(card)
+        row.clear()
+
+    for card in cards:
+        if card.is_panorama:
+            _flush_row()
+            _render_asset_card(card)
+        else:
+            row.append(card)
+            if len(row) == _ASSET_GRID_COLS:
+                _flush_row()
+    _flush_row()
 
 
 def _render_prim_tree(prim_tree: list[UsdPrimRecord]) -> None:
@@ -92,10 +108,9 @@ def _render_prim_tree(prim_tree: list[UsdPrimRecord]) -> None:
     if not prim_tree:
         return
     with st.expander("Background prim tree", expanded=False):
-        st.components.v1.html(
+        st.iframe(
             render_prim_tree_html(prim_tree),
             height=estimate_prim_tree_height_px(prim_tree),
-            scrolling=True,
         )
 
 
@@ -117,10 +132,9 @@ def render_visualization_widgets(
     st.markdown("**Spatial graph**")
     graph_col, unary_col = st.columns([3, 1])
     with graph_col:
-        st.components.v1.html(
+        st.iframe(
             render_mermaid_html(spec),
             height=estimate_mermaid_height_px(spec),
-            scrolling=True,
         )
     with unary_col:
         _render_unary_constraints(spec.relations)

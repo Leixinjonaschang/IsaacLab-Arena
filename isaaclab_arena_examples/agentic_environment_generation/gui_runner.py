@@ -12,7 +12,7 @@ Usage::
 
     # Open an existing spec:
     python isaaclab_arena_examples/agentic_environment_generation/gui_runner.py \\
-        --env_graph_spec_yaml isaaclab_arena/tests/test_data/pick_and_place_maple_table_env_graph.yaml
+        --env_spec isaaclab_arena/tests/test_data/pick_and_place_maple_table_env_graph.yaml
 
     # Custom port:
     python isaaclab_arena_examples/agentic_environment_generation/gui_runner.py --port 8600
@@ -49,7 +49,7 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--env_graph_spec_yaml",
+        "--env_spec",
         type=Path,
         default=None,
         help="Optional ArenaEnvGraphSpec YAML to open in the editor.",
@@ -69,11 +69,26 @@ def main() -> None:
         help="Streamlit server port (default: 8501).",
     )
     args = parser.parse_args()
-    serve_live_editor(args.env_graph_spec_yaml, out_dir=args.out_dir, port=args.port)
+    serve_live_editor(
+        args.env_spec,
+        out_dir=args.out_dir,
+        port=args.port,
+    )
 
 
-def serve_live_editor(yaml_path: Path | None, *, out_dir: Path = DEFAULT_AGENTIC_OUTPUT_DIR, port: int = 8501) -> None:
-    """Start the SimApp server, spawn Streamlit, and supervise both until exit."""
+def serve_live_editor(
+    yaml_path: Path | None,
+    *,
+    out_dir: Path = DEFAULT_AGENTIC_OUTPUT_DIR,
+    port: int = 8501,
+) -> None:
+    """Start the SimApp server, spawn Streamlit, and supervise both until exit.
+
+    Args:
+        yaml_path: Optional spec YAML to open in the editor.
+        out_dir: Directory the editor writes generated spec YAML into.
+        port: Streamlit server port.
+    """
     app_path = _REVIEW_GUI_DIR / "streamlit_ui.py"
     assert app_path.exists(), f"Streamlit app not found at {app_path} — installation is incomplete."
 
@@ -111,7 +126,7 @@ def serve_live_editor(yaml_path: Path | None, *, out_dir: Path = DEFAULT_AGENTIC
             "--",
         ]
         if yaml_path is not None:
-            cmd.extend(["--env_graph_spec_yaml", str(yaml_path.resolve())])
+            cmd.extend(["--env_spec", str(yaml_path.resolve())])
         cmd.extend(["--out_dir", str(out_dir.resolve())])
 
         print(f"[review_gui] launching Streamlit live editor: {' '.join(cmd)}", file=sys.stderr)

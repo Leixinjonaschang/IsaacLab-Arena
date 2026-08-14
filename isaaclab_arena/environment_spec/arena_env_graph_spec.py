@@ -16,6 +16,7 @@ from isaaclab_arena.environment_spec.arena_env_graph_types import (
     CliOverrideSpec,
     CompositeTaskSpec,
     ObjectReferenceSpec,
+    ObjectSetSpec,
     PlacementValidatorSpec,
     SpatialRelationSpec,
     TaskSpec,
@@ -35,22 +36,29 @@ class ArenaEnvGraphSpec(BaseModel):
     embodiment: AssetSpec = Field(description="The robot that performs the tasks.")
     background: AssetSpec = Field(description="The static scene the robot and objects sit in.")
     objects: list[AssetSpec] = Field(default_factory=list, description="Movable scene objects, including distractors.")
+    object_sets: list[ObjectSetSpec] | None = Field(
+        default=None,
+        description=(
+            "Optional sets of rigid objects distributed among parallel environments, one object per environment,"
+            " sharing the same task."
+        ),
+    )
     object_references: list[ObjectReferenceSpec] | None = Field(
         default=None, description="Optional prims inside the background exposed as assets (e.g. a table surface)."
     )
     relations: list[SpatialRelationSpec] = Field(
         default_factory=list, description="Spatial layout relations across all assets."
     )
+    task: CompositeTaskSpec = Field(description="Root task the robot performs to manipulate the objects.")
     placement_validators: PlacementValidatorSpec | None = Field(
         default=None,
         description="Per-env placement validators; none runs all build-time checks.",
     )
-    task: CompositeTaskSpec = Field(description="Root task the robot performs to manipulate the objects.")
     cli_override_specs: list[CliOverrideSpec] | None = Field(
         default=None, description="Optional authoring-time CLI flags that swap an asset's registry_name; usually empty."
     )
 
-    @field_validator("object_references", "cli_override_specs", mode="before")
+    @field_validator("object_sets", "object_references", "cli_override_specs", mode="before")
     @classmethod
     def _none_if_empty_list(cls, value: Any) -> Any:
         if value == []:
@@ -77,6 +85,7 @@ class ArenaEnvGraphSpec(BaseModel):
             self.embodiment.id,
             self.background.id,
             *(obj.id for obj in self.objects),
+            *(object_set.id for object_set in (self.object_sets or [])),
             *(ref.id for ref in (self.object_references or [])),
         ):
             if asset_id in seen:
@@ -100,13 +109,15 @@ class ArenaEnvGraphSpec(BaseModel):
     def _assert_relation_references(relations: list[SpatialRelationSpec], known_ids: set[str]) -> None:
         """Ensure relation subject/reference endpoints name known asset ids."""
         for index, relation in enumerate(relations):
-            assert (
-                relation.subject in known_ids
-            ), f"Relation[{index}] kind '{relation.kind}' references unknown subject '{relation.subject}'"
+            assert relation.subject in known_ids, (
+                f"Relation[{index}] kind '{relation.kind}' references unknown subject"
+                f" '{relation.subject}'. Add it to 'objects' or 'object_references'."
+            )
             if relation.reference is not None:
-                assert (
-                    relation.reference in known_ids
-                ), f"Relation[{index}] kind '{relation.kind}' references unknown reference '{relation.reference}'"
+                assert relation.reference in known_ids, (
+                    f"Relation[{index}] kind '{relation.kind}' references unknown reference"
+                    f" '{relation.reference}'. Add it to 'objects' or 'object_references'."
+                )
 
     @staticmethod
     def _assert_task_param_references(subtasks: list[TaskSpec], known_ids: set[str]) -> None:
@@ -114,16 +125,19 @@ class ArenaEnvGraphSpec(BaseModel):
         for task in subtasks:
             for param_name, param_value in task.params.items():
                 if isinstance(param_value, str):
-                    assert (
-                        param_value in known_ids
-                    ), f"Task '{task.kind}' param '{param_name}' references unknown node '{param_value}'"
+                    assert param_value in known_ids, (
+                        f"Task '{task.kind}' param '{param_name}' references unknown node"
+                        f" '{param_value}'. Add it to 'objects' or 'object_references'."
+                    )
 
     def summary(self) -> str:
         """Return a one-line summary of object, task, and relation counts."""
-        return (
-            f"{len(self.objects)} objects · {len(self.task.subtasks)} atomic tasks "
-            f"({self.task.composition}) · {len(self.relations)} relations"
-        )
+        parts = [f"{len(self.objects)} objects"]
+        if self.object_sets:
+            parts.append(f"{len(self.object_sets)} object sets")
+        parts.append(f"{len(self.task.subtasks)} atomic tasks ({self.task.composition})")
+        parts.append(f"{len(self.relations)} relations")
+        return " · ".join(parts)
 
     def _validate_cli_override_specs(self) -> None:
         """Check each CLI override uses a unique flag and points to a swappable asset."""

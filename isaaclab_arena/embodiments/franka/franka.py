@@ -3,9 +3,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 
 import torch
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import isaaclab.envs.mdp as mdp_isaac_lab
 import isaaclab.sim as sim_utils
@@ -26,34 +28,52 @@ from isaaclab.managers import RewardTermCfg, SceneEntityCfg
 from isaaclab.markers.config import FRAME_MARKER_CFG
 from isaaclab.sensors import CameraCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg, OffsetCfg
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.configclass import configclass
 from isaaclab_assets.robots.franka import FRANKA_PANDA_CFG, FRANKA_PANDA_HIGH_PD_CFG
 from isaaclab_tasks.manager_based.manipulation.stack.mdp import franka_stack_events
 from isaaclab_tasks.manager_based.manipulation.stack.mdp.observations import ee_frame_pos, ee_frame_quat
 
-from isaaclab_arena.assets.nucleus import ARENA_NUCLEUS_DIR
 from isaaclab_arena.assets.register import register_asset
 from isaaclab_arena.embodiments.common.arm_mode import ArmMode
 from isaaclab_arena.embodiments.common.mimic_utils import get_rigid_and_articulated_object_poses
 from isaaclab_arena.embodiments.embodiment_base import EmbodimentBase
 from isaaclab_arena.embodiments.franka.observations import gripper_pos
+from isaaclab_arena.embodiments.robot_on_stand_utils import RobotPrimSpec, StandPrimSpec, compose_on_stand_usd
 from isaaclab_arena.utils.cameras import ArenaCameraCfg
 from isaaclab_arena.utils.pose import Pose
-from isaaclab_arena.variations.camera_extrinsics_variation import CameraExtrinsicsVariation
+
+if TYPE_CHECKING:
+    import trimesh
 
 _DEFAULT_CAMERA_OFFSET = Pose(position_xyz=(0.11, -0.031, -0.074), rotation_xyzw=(0.0, 0.0, 0.70711, 0.70711))
 
-
-# The reason to use our internal panda USD is to combine the panda and the stand within one USD.
-# This is not ideal but currently required by the ObjectPlacementSolver to handle the robot placement correctly.
-# TODO(cvolk): Move to the IsaacLab supported FRANKA_CFG and handle the handling of the stand internally.
-_FRANKA_IK_REL_CFG = FRANKA_PANDA_HIGH_PD_CFG.copy()
-_FRANKA_IK_REL_CFG.spawn.usd_path = f"{ARENA_NUCLEUS_DIR}/Arena/assets/robot_library/franka_panda_hand_on_stand.usd"
-
-# Standard-PD Franka for joint-position control.
-# Uses FRANKA_PANDA_CFG (gravity on, stiffness=80, damping=4) instead of HIGH_PD.
-_FRANKA_JOINT_POS_CFG = FRANKA_PANDA_CFG.copy()
-_FRANKA_JOINT_POS_CFG.spawn.usd_path = _FRANKA_IK_REL_CFG.spawn.usd_path
+_FRANKA_ROBOT_PRIM = RobotPrimSpec(
+    # TODO(qianl): use FRANKA_PANDA_CFG spawn path once IsaacSim version updates to use Legacy path by default.
+    robot_usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/FrankaEmika/Legacy/panda_instanceable.usd",
+    root_prim_path="/panda",
+    robot_base_prim_name="panda_link0",
+    stand_prim_name="stand_instanceable",
+)
+_FRANKA_STAND_PRIM = StandPrimSpec(
+    stand_usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/Stand/stand_instanceable.usd",
+    ref_prim_path="/Stand",
+    payload_child_name="Stand",
+    footprint_translate_xyz=(-0.05, 0.0, 0.0),
+    footprint_scale_xy=(1.2, 1.2),
+    stand_default_height=0.8755,
+)
+_FRANKA_JOINT_NAMES = (
+    "panda_joint1",
+    "panda_joint2",
+    "panda_joint3",
+    "panda_joint4",
+    "panda_joint5",
+    "panda_joint6",
+    "panda_joint7",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+)
 
 
 class FrankaEmbodimentBase(EmbodimentBase):
@@ -69,24 +89,36 @@ class FrankaEmbodimentBase(EmbodimentBase):
         self,
         enable_cameras: bool = False,
         initial_pose: Pose | None = None,
-        initial_joint_pose: list[float] | None = None,
         concatenate_observation_terms: bool = False,
         arm_mode: ArmMode | None = None,
     ):
         super().__init__(enable_cameras, initial_pose, concatenate_observation_terms, arm_mode)
         self.event_config = FrankaEventCfg()
-        if initial_joint_pose is not None:
-            self.set_initial_joint_pose(initial_joint_pose)
         self.reward_config = FrankaRewardsCfg()
         self.mimic_env = FrankaMimicEnv
         self.camera_config = FrankaCameraCfg()
         self.scene_config = FrankaSceneCfg()
         self.observation_config = FrankaObservationsCfg()
         self.observation_config.policy.concatenate_terms = self.concatenate_observation_terms
-        self.add_variation(CameraExtrinsicsVariation(camera_name="wrist_cam"))
+        self.add_camera_variations(self.camera_config)
+
+    def get_collision_mesh(self) -> trimesh.Trimesh:
+        """Return one posed box mesh for the robot and stand."""
+        from isaaclab_arena.utils.usd_helpers import extract_trimesh_from_usd_at_joint_pos
+
+        source = self.get_placement_geometry_source()
+        return extract_trimesh_from_usd_at_joint_pos(source.usd_path, source.joint_pos, source.scale)
 
     def set_initial_joint_pose(self, initial_joint_pose: list[float]) -> None:
-        self.event_config.init_franka_arm_pose.params["default_pose"] = initial_joint_pose
+        """Set the spawn and reset joint positions in articulation order."""
+        expected_joint_count = len(_FRANKA_JOINT_NAMES)
+        assert (
+            len(initial_joint_pose) == expected_joint_count
+        ), f"expected {expected_joint_count} joint positions, got {len(initial_joint_pose)}"
+        assert self.scene_config is not None, "scene_config must be populated before setting the joint pose"
+        robot = self.scene_config.robot
+        assert robot is not None, "scene_config.robot must be populated before setting the joint pose"
+        robot.init_state = robot.init_state.replace(joint_pos=dict(zip(_FRANKA_JOINT_NAMES, initial_joint_pose)))
 
     def get_ee_frame_name(self, arm_mode: ArmMode) -> str:
         return "ee_frame"
@@ -110,11 +142,12 @@ class FrankaIKEmbodiment(FrankaEmbodimentBase):
         super().__init__(
             enable_cameras=enable_cameras,
             initial_pose=initial_pose,
-            initial_joint_pose=initial_joint_pose,
             concatenate_observation_terms=concatenate_observation_terms,
             arm_mode=arm_mode,
         )
-        self.scene_config.robot = _FRANKA_IK_REL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene_config.robot = _franka_robot_cfg_on_stand(FRANKA_PANDA_HIGH_PD_CFG.copy())
+        if initial_joint_pose is not None:
+            self.set_initial_joint_pose(initial_joint_pose)
         self.action_config = FrankaIKActionCfg()
 
     def get_command_body_name(self) -> str:
@@ -163,12 +196,13 @@ class FrankaJointPosEmbodiment(FrankaEmbodimentBase):
         super().__init__(
             enable_cameras=enable_cameras,
             initial_pose=initial_pose,
-            initial_joint_pose=initial_joint_pose,
             concatenate_observation_terms=concatenate_observation_terms,
             arm_mode=arm_mode,
         )
         self.action_config = FrankaJointPosActionsCfg()
-        self.scene_config.robot = _FRANKA_JOINT_POS_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene_config.robot = _franka_robot_cfg_on_stand(FRANKA_PANDA_CFG.copy())
+        if initial_joint_pose is not None:
+            self.set_initial_joint_pose(initial_joint_pose)
 
     def get_command_body_name(self) -> str:
         return "panda_hand"
@@ -182,7 +216,15 @@ class FrankaJointPosActionsCfg:
         asset_name="robot",
         joint_names=["panda_joint.*"],
         scale=0.5,
-        use_default_offset=True,
+        # Actions are displacements from Isaac Lab's default Franka pose, which is the zero point
+        # trained policies were fitted against. Stated rather than left to ``use_default_offset``,
+        # which reads the spawn state and so would move the zero point whenever that pose changes.
+        use_default_offset=False,
+        offset={
+            name: value
+            for name, value in FRANKA_PANDA_CFG.init_state.joint_pos.items()
+            if name.startswith("panda_joint")
+        },
     )
 
     gripper_action: ActionTermCfg = BinaryJointPositionActionCfg(
@@ -279,17 +321,23 @@ class FrankaObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
 
 
+_FRANKA_READY_POSE = {
+    "panda_joint1": 0.0,
+    "panda_joint2": -0.785,
+    "panda_joint3": -0.1107,
+    "panda_joint4": -1.1775,
+    "panda_joint5": 0.0,
+    "panda_joint6": 0.785,
+    "panda_joint7": 0.785,
+    "panda_finger_joint.*": 0.0400,
+}
+"""The arm pose the Franka spawns and resets in, overridable via ``set_initial_joint_pose``."""
+
+
 @configclass
 class FrankaEventCfg:
     """Configuration for Franka."""
 
-    init_franka_arm_pose = EventTerm(
-        func=franka_stack_events.set_default_joint_pose,
-        mode="reset",
-        params={
-            "default_pose": [0.0, -0.785, -0.1107, -1.1775, 0.0, 0.785, 0.785, 0.0400, 0.0400],
-        },
-    )
     randomize_franka_joint_state = EventTerm(
         func=franka_stack_events.randomize_joint_by_gaussian_offset,
         mode="reset",
@@ -450,3 +498,18 @@ class FrankaMimicEnv(ManagerBasedRLMimicEnv):
         object_pose_matrix = get_rigid_and_articulated_object_poses(state, env_ids)
 
         return object_pose_matrix
+
+
+def _franka_robot_cfg_on_stand(robot_cfg: ArticulationCfg) -> ArticulationCfg:
+    """Copy ``robot_cfg`` onto ``{ENV_REGEX_NS}/Robot`` with the composed on-stand USD."""
+    cfg = robot_cfg.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    # Arena reaches for objects on a table, so it spawns at its own ready pose rather than at the
+    # pose Isaac Lab ships, which folds the elbow back.
+    cfg.init_state = cfg.init_state.replace(joint_pos=_FRANKA_READY_POSE)
+    cfg.spawn.usd_path = compose_on_stand_usd(
+        _FRANKA_ROBOT_PRIM,
+        _FRANKA_STAND_PRIM,
+        stand_height_m=_FRANKA_STAND_PRIM.stand_default_height,
+        output_basename="franka_panda_on_stand",
+    )
+    return cfg

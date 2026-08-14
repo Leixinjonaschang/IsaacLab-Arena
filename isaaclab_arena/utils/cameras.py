@@ -18,7 +18,7 @@ from isaaclab.sensors import CameraCfg, TiledCameraCfg  # noqa: F401
 
 from isaaclab_arena.assets.asset import Asset
 from isaaclab_arena.utils.configclass import make_configclass
-from isaaclab_arena.utils.pose import PoseRange
+from isaaclab_arena.utils.pose import Pose, PosePerEnv, PoseRange
 
 
 class ArenaCameraCfg:
@@ -40,8 +40,16 @@ class ArenaCameraCfg:
     def use_tiled_camera(self, use_tiled_camera: bool) -> None:
         self._use_tiled_camera = use_tiled_camera
 
+    def set_use_tiled_camera(self, use_tiled_camera: bool) -> None:
+        """Select whether get_cfg returns tiled cameras."""
+        self._use_tiled_camera = use_tiled_camera
+
+    def camera_names(self) -> list[str]:
+        """Return the field name of every camera in this rig."""
+        return [f.name for f in fields(self) if isinstance(getattr(self, f.name), CameraCfg)]
+
     def get_cfg(self) -> Any:
-        """Return the tiled or un-tiled version of the CameraCfg.
+        """Return a copy of this rig, tiled or untiled depending on use_tiled_camera.
 
         A copy is returned so callers may freely combine or mutate it without affecting this instance.
         """
@@ -136,6 +144,18 @@ def make_camera_observation_cfg(
     return WrappedCameraObsCfg()
 
 
+def _resolve_lookat_pose(lookat_object: Asset) -> Pose | None:
+    """Return a single world-frame pose for viewer targeting."""
+    initial_pose = lookat_object.get_initial_pose()
+    if initial_pose is None:
+        return None
+    if isinstance(initial_pose, PosePerEnv):
+        return initial_pose.poses[0] if initial_pose.poses else None
+    if isinstance(initial_pose, PoseRange):
+        return initial_pose.get_midpoint()
+    return initial_pose
+
+
 def get_viewer_cfg_look_at_object(lookat_object: Asset, offset: np.ndarray) -> ViewerCfg:
     """Create a viewer configuration that looks at a specific object with an offset.
 
@@ -154,13 +174,10 @@ def get_viewer_cfg_look_at_object(lookat_object: Asset, offset: np.ndarray) -> V
         ViewerCfg configured with the camera position and target.
         Default ViewerCfg with standard positioning if the object has no initial pose set.
     """
-    initial_pose = lookat_object.get_initial_pose()
+    initial_pose = _resolve_lookat_pose(lookat_object)
     if initial_pose is None:
         print(f"{lookat_object.name} has no initial pose set. Using default ViewerCfg.")
         return ViewerCfg()
-
-    if isinstance(initial_pose, PoseRange):
-        initial_pose = initial_pose.get_midpoint()
 
     # TODO(cvolk): Add float coercion to Pose.__post_init__ so this conversion is unnecessary.
     # Ensure we only pass primitive Python floats (not NumPy scalars) into ViewerCfg,

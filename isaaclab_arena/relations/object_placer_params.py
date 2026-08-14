@@ -3,11 +3,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
-from isaaclab_arena.relations.relation_solver_params import CollisionMode, RelationSolverParams
-
-__all__ = ["CollisionMode", "ObjectPlacerParams"]
+from isaaclab_arena.relations.reachability_config import ReachabilityConfig
+from isaaclab_arena.relations.relation_solver_params import RelationSolverParams
 
 
 @dataclass
@@ -57,3 +58,12 @@ class ObjectPlacerParams:
     required_checks: set[str] | None = None
     """Check names that must pass for a layout to count as valid (gates rejection/refill in the pool).
     None requires every enabled check; otherwise should be a subset of enabled_checks."""
+
+    reachability_config: ReachabilityConfig = field(default_factory=ReachabilityConfig)
+    """Tuning for the optional ``ik_reachable`` build-time check. See ReachabilityConfig for more details."""
+
+    debug_visualize: bool = False
+    """If True, stream every validated candidate layout to a spawned Rerun viewer window. Off by default."""
+
+    debug_visualize_output_path: str | None = None
+    """Path to record the debug visualization to as a Rerun ``.rrd`` file, for headless runs."""

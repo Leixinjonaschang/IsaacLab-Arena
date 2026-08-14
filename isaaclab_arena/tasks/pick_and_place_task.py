@@ -86,6 +86,10 @@ class PickAndPlaceTask(TaskBase):
             else task_description
         )
 
+    def apply_reachability_constraints(self) -> None:
+        """The robot must reach the object it picks up and the location it places onto."""
+        self._apply_reachability_constraints([self.pick_up_object, self.destination_location])
+
     def make_scene_cfg(self):
         contact_sensor_cfg = self.pick_up_object.get_contact_sensor_cfg(
             contact_against_object=self.destination_location,
@@ -219,7 +223,7 @@ class PickAndPlaceTask(TaskBase):
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out: TerminationTermCfg = TerminationTermCfg(func=mdp_isaac_lab.time_out)
+    time_out: TerminationTermCfg = TerminationTermCfg(func=mdp_isaac_lab.time_out, time_out=True)
 
     success: TerminationTermCfg = MISSING
 

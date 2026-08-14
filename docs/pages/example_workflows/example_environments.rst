@@ -5,14 +5,14 @@ Isaac Lab Arena ships a catalog of ready-to-run environments under
 ``isaaclab_arena_environments/``. Environments can be provided in two ways:
 
 * **Python registered environments**: small compositions of the building blocks
-  introduced in :doc:`../concepts/concept_overview` — **Scene**,
+  introduced in :doc:`../concepts/environment/index` — **Scene**,
   **Embodiment**, and **Task** — wrapped in an ``ExampleEnvironmentBase``
   subclass and registered with the global ``EnvironmentRegistry``. The
   registered ``Task ID`` is passed as the positional ``example_environment``
   argument to scripts such as ``isaaclab_arena/evaluation/policy_runner.py``.
 * **Environment graph YAML specs**: ``ArenaEnvGraphSpec`` files that describe the same
   scene, embodiment, task, objects, and relations declaratively. These are
-  passed with ``--env_graph_spec_yaml`` and can be generated from prompts by the
+  passed with ``--env_spec`` and can be generated from prompts by the
   :doc:`agentic_env_gen/index` workflow.
 
 The metadata below follows the same structure as the **Key Specifications**
@@ -29,11 +29,21 @@ Agentically Generated Graph Specs
 
 RoboLab environment graph YAMLs live under
 ``isaaclab_arena_environments/robolab/``. They are generated from natural-language
-prompts and consumed with ``--env_graph_spec_yaml`` instead of the positional
+prompts and consumed with ``--env_spec`` instead of the positional
 ``example_environment`` name.
 
 See :doc:`robolab_task_catalog` for the list of RoboLab tasks
 currently supported in Arena.
+
+Kitchen Benchmark
+-----------------
+
+Kitchen benchmark environment graph YAMLs live under
+``isaaclab_arena_environments/kitchen_bench/``. They define DROID manipulation
+tasks across Lightwheel RoboCasa and Replicator kitchen layouts.
+
+See :doc:`kitchen_bench_catalog` for all 17 environment specs and their Pi
+policy executions.
 
 
 Pick & Place
@@ -103,7 +113,7 @@ as the introductory ``First Arena Environment`` walkthrough.
    * - **Task Class**
      - ``PickAndPlaceTask`` (episode_length_s = 20)
    * - **Object Placement**
-     - Relations: ``On(table)``, ``PositionLimits(x=0.55..0.70, y=-0.4..-0.1)``
+     - Relations: ``On(table)``, ``PositionLimitsBox(x=0.55..0.70, y=-0.4..-0.1)``
    * - **CLI Args**
      - ``--pick_up_object``, ``--destination_location``, ``--additional_table_objects``, ``--embodiment``, ``--teleop_device``, ``--hdr``, ``--light_intensity``
 
@@ -580,7 +590,7 @@ the refrigerator shelf, then closes the refrigerator door. Featured in the
    * - **Embodiment**
      - ``gr1_pink`` (default) via ``--embodiment``
    * - **Scene**
-     - ``lightwheel_robocasa_kitchen`` background (``--kitchen_style`` selectable), ``light``, kitchen counter anchor
+     - ``lightwheel_kitchen_one_wall_farmhouse1`` background, ``light``, kitchen counter anchor
    * - **Objects**
      - Pick: ``ranch_dressing_hope_robolab`` (default), or ``--object_set`` for heterogeneous spawning; Destination: refrigerator shelf reference; Container: ``refrigerator`` (articulated)
    * - **Task Class**
@@ -588,7 +598,7 @@ the refrigerator shelf, then closes the refrigerator door. Featured in the
    * - **Interop**
      - Isaac Lab Mimic (``put_and_close_door_task_D0`` datagen)
    * - **CLI Args**
-     - ``--object``, ``--object_set``, ``--kitchen_style``, ``--embodiment``, ``--teleop_device``
+     - ``--object``, ``--object_set``, ``--embodiment``, ``--teleop_device``
 
 
 franka_put_and_close_door
@@ -626,8 +636,8 @@ microwave, followed by closing the microwave door.
 See Also
 --------
 
-- :doc:`../concepts/concept_overview` — the Scene / Embodiment / Task building blocks used by every environment listed here.
-- :doc:`../quickstart/first_arena_env` — walkthrough of the ``pick_and_place_maple_table`` environment.
+- :doc:`../concepts/environment/index` — the Scene / Embodiment / Task building blocks used by every environment listed here.
+- :doc:`../quickstart/arena_env` — walkthrough of the ``pick_and_place_maple_table`` environment.
 - :doc:`../arena_in_your_repo/index` — how to register your own ``ExampleEnvironmentBase`` subclass alongside the built-in ones.
 
 .. toctree::
@@ -635,3 +645,4 @@ See Also
    :hidden:
 
    robolab_task_catalog
+   kitchen_bench_catalog

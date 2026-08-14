@@ -10,8 +10,9 @@ from isaaclab.envs.common import ViewerCfg
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
 from isaaclab_arena.assets.background import Background
+from isaaclab_arena.assets.lightwheel_kitchen_factory import register_lightwheel_kitchens
 from isaaclab_arena.assets.lightwheel_utils import acquire_lightwheel_asset
-from isaaclab_arena.assets.nucleus import ARENA_NUCLEUS_DIR
+from isaaclab_arena.assets.nucleus import ARENA_NUCLEUS_DIR, ISAAC_STAGING_NUCLEUS_DIR
 from isaaclab_arena.assets.register import register_asset
 from isaaclab_arena.utils.pose import Pose
 
@@ -168,13 +169,25 @@ class LightwheelKitchenBackground(LibraryBackground):
     """
 
     name = "lightwheel_robocasa_kitchen"
-    tags = ["background"]
+    tags = ["background", "lightwheel", "kitchen"]
     usd_path = None
     initial_pose = Pose.identity()
     object_min_z = -0.2
+    layout_id = 1
+    style_id = 1
 
-    def __init__(self, layout_id: int = 1, style_id: int = 1):
+    def __init__(
+        self,
+        layout_id: int | None = None,
+        style_id: int | None = None,
+        **kwargs,
+    ):
         from lightwheel_sdk.loader import floorplan_loader
+
+        if layout_id is None:
+            layout_id = self.layout_id
+        if style_id is None:
+            style_id = self.style_id
 
         # Lazily download the USD
         self.usd_path = str(
@@ -188,11 +201,16 @@ class LightwheelKitchenBackground(LibraryBackground):
                 backend="robocasa",
             )[0]
         )
-        super().__init__()
+        super().__init__(**kwargs)
 
     def get_viewer_cfg(self) -> ViewerCfg:
         # Looking in through the open front.
         return ViewerCfg(eye=(2.75, -5.5, 1.5), lookat=(2.75, -1.4, 0.9))
+
+
+# `globals()` makes it possible to expose the generated classes as module-level classes
+# so they can be imported like other background classes.
+register_lightwheel_kitchens(LightwheelKitchenBackground, globals())
 
 
 @register_asset
@@ -216,3 +234,59 @@ class TableOakRobolab(LibraryBackground):
     tags = ["background", "robolab"]
     usd_path = f"{ARENA_NUCLEUS_DIR}/Arena/assets/object_library/srl_robolab_assets/fixtures/table_oak.usd"
     object_min_z = -0.05
+
+
+# -----------------------------------------------------------------------------
+# Replicator kitchen backgrounds
+# -----------------------------------------------------------------------------
+
+
+class ReplicatorKitchenBackground(LibraryBackground):
+    """Base class for Replicator-generated kitchen floorplans."""
+
+    tags = ["background", "replicator"]
+    initial_pose = Pose.identity()
+    object_min_z = -0.2
+
+    def get_viewer_cfg(self) -> ViewerCfg:
+        return ViewerCfg(eye=(0.0, -1.0, 1.65), lookat=(0.0, 0.0, 1.35))
+
+
+@register_asset
+class ReplicatorKitchenGShape(ReplicatorKitchenBackground):
+    """Replicator G-shaped kitchen."""
+
+    name = "replicator_kitchen_g_shape"
+    usd_path = f"{ISAAC_STAGING_NUCLEUS_DIR}/Environments/replicator_kitchen/kitchen_g_shape.usda"
+
+
+@register_asset
+class ReplicatorKitchenLIsland(ReplicatorKitchenBackground):
+    """Replicator L-shaped kitchen with an island."""
+
+    name = "replicator_kitchen_l_island"
+    usd_path = f"{ISAAC_STAGING_NUCLEUS_DIR}/Environments/replicator_kitchen/kitchen_l_island.usda"
+
+
+@register_asset
+class ReplicatorKitchenLShape(ReplicatorKitchenBackground):
+    """Replicator L-shaped kitchen."""
+
+    name = "replicator_kitchen_l_shape"
+    usd_path = f"{ISAAC_STAGING_NUCLEUS_DIR}/Environments/replicator_kitchen/kitchen_l_shape.usda"
+
+
+@register_asset
+class ReplicatorKitchenPeninsula(ReplicatorKitchenBackground):
+    """Replicator kitchen with a peninsula."""
+
+    name = "replicator_kitchen_peninsula"
+    usd_path = f"{ISAAC_STAGING_NUCLEUS_DIR}/Environments/replicator_kitchen/kitchen_peninsula.usda"
+
+
+@register_asset
+class ReplicatorKitchenUShape(ReplicatorKitchenBackground):
+    """Replicator U-shaped kitchen."""
+
+    name = "replicator_kitchen_u_shape"
+    usd_path = f"{ISAAC_STAGING_NUCLEUS_DIR}/Environments/replicator_kitchen/kitchen_u_shape.usda"

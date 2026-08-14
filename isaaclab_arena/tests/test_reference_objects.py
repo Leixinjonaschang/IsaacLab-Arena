@@ -10,7 +10,7 @@ import tqdm
 import traceback
 from types import SimpleNamespace
 
-from isaaclab_arena.tests.utils.subprocess import run_simulation_app_function
+from isaaclab_arena.tests.utils.persistent_simulation_app import run_function_with_persistent_simulation_app
 from isaaclab_arena.utils.bounding_box import AxisAlignedBoundingBox
 from isaaclab_arena.utils.pose import Pose
 
@@ -64,6 +64,48 @@ def test_object_reference_world_bbox_applies_parent_yaw():
 
     assert torch.allclose(world_bbox.min_point, torch.tensor([[7.9, 1.0, 0.0]]), atol=1e-6)
     assert torch.allclose(world_bbox.max_point, torch.tensor([[8.0, 1.2, 0.05]]), atol=1e-6)
+
+
+def test_object_reference_caches_parent_usd_prim_path(monkeypatch):
+    """Resolving the initial pose also caches the parent-USD path for later use."""
+    from isaaclab_arena.assets.object_reference import ObjectReference
+
+    calls = {"open_count": 0}
+    obj_ref = ObjectReference.__new__(ObjectReference)
+    obj_ref.prim_path = "{ENV_REGEX_NS}/kitchen/counter"
+    obj_ref._parent_scale = (1.0, 1.0, 1.0)
+    parent = SimpleNamespace(usd_path="/tmp/kitchen.usd", name="kitchen")
+
+    class OpenStage:
+        def __init__(self, path):
+            assert path == parent.usd_path
+
+        def __enter__(self):
+            calls["open_count"] += 1
+            return SimpleNamespace(GetPrimAtPath=lambda path: object())
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr("isaaclab_arena.assets.object_reference.open_stage", OpenStage)
+    monkeypatch.setattr(
+        ObjectReference,
+        "isaaclab_prim_path_to_original_prim_path",
+        staticmethod(lambda prim_path, parent_asset, stage: "/World/counter"),
+    )
+    monkeypatch.setattr(
+        "isaaclab_arena.assets.object_reference.get_prim_pose_in_default_prim_frame",
+        lambda prim, stage: Pose(),
+    )
+
+    (
+        obj_ref._prim_path_in_parent_usd,
+        pose,
+    ) = obj_ref._get_referenced_prim_path_and_pose_relative_to_parent(parent)
+
+    assert obj_ref.prim_path_in_parent_usd == "/World/counter"
+    assert pose == Pose()
+    assert calls["open_count"] == 1
 
 
 def test_object_reference_get_collision_mesh_extracts_referenced_prim(monkeypatch):
@@ -412,7 +454,7 @@ def _test_reference_objects_with_transform(simulation_app, tmp_path: pathlib.Pat
 
 def test_reference_objects(tmp_path: pathlib.Path):
     tmp_path = tmp_path / "reference_objects.usd"
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_reference_objects,
         headless=HEADLESS,
         tmp_path=tmp_path,
@@ -425,7 +467,7 @@ def test_reference_objects_with_transform(tmp_path: pathlib.Path):
     # the test still works if the whole environment is translated and rotated.
     # This relies on the reference objects relative poses being correct.
     tmp_path = tmp_path / "reference_objects_with_transform.usd"
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_reference_objects_with_transform,
         headless=HEADLESS,
         tmp_path=tmp_path,

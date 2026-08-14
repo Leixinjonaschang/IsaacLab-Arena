@@ -75,23 +75,28 @@ Arena solves this by making environment variation a first-class concept. Swap an
 
 ```bash
 # 1. Clone the repository
-git clone git@github.com:isaac-sim/IsaacLab-Arena.git
+git clone --recurse-submodules git@github.com:isaac-sim/IsaacLab-Arena.git
 cd IsaacLab-Arena
 
-# 2. Create the locked environment (Isaac Lab, Isaac Sim, PyTorch, and Newton wheels)
+# 2. Create the locked environment (Isaac Lab from source, plus the Isaac Sim, PyTorch, and Newton wheels)
 uv sync
 
-# 3. Accept the Isaac Sim EULA
+# 3. Activate the environment and accept the Isaac Sim EULA
+source .venv/bin/activate
 export OMNI_KIT_ACCEPT_EULA=YES ACCEPT_EULA=Y
 
 # 4. Verify the installation with a short zero-action rollout
-uv run python isaaclab_arena/evaluation/policy_runner.py \
+python isaaclab_arena/evaluation/policy_runner.py \
   --policy_type zero_action --num_steps 20 cube_goal_pose
 
 # 4b. (Optional) Watch the rollout in the GUI visualizer
-uv run python isaaclab_arena/evaluation/policy_runner.py \
+python isaaclab_arena/evaluation/policy_runner.py \
   --viz kit --policy_type zero_action --num_steps 200 cube_goal_pose
 ```
+
+> **Note:** See our
+> [installation docs](https://isaac-sim.github.io/IsaacLab-Arena/main/pages/quickstart/installation.html)
+> for more details and installation flavors.
 
 **Source install inside Docker:**
 
@@ -160,13 +165,12 @@ and translate them into an `ArenaEnvBuilderCfg` before building the environment.
 Explore more examples in the [documentation](https://isaac-sim.github.io/IsaacLab-Arena/main/index.html), including:
 
 <p align="center">
-  <img src="docs/images/static_apple_pick_and_place.gif" alt="G1 static apple-to-plate pick and place" width="80%">
+  <img src="docs/images/g1_galileo_arena_box_pnp_locomanip.gif" alt="G1 loco-manipulation box pick and place" width="80%">
 </p>
 
 | Example | Description |
 |---------|-------------|
 | **Imitation Learning** | |
-| [G1 Static Apple-to-Plate](https://isaac-sim.github.io/IsaacLab-Arena/main/pages/example_workflows/static_apple/index.html) | G1 humanoid picks an apple and places it onto a plate on the same shelf without locomotion |
 | [G1 Loco-Manipulation Pick & Place](https://isaac-sim.github.io/IsaacLab-Arena/main/pages/example_workflows/locomanipulation/index.html) | G1 humanoid navigates, picks up a box, and places it in a bin |
 | [GR1 Open Microwave Door](https://isaac-sim.github.io/IsaacLab-Arena/main/pages/example_workflows/static_manipulation/index.html) | GR1 upper-body manipulation of an articulated microwave door |
 | [GR1 Sequential Pick & Place and Close Door](https://isaac-sim.github.io/IsaacLab-Arena/main/pages/example_workflows/sequential_static_manipulation/index.html) | GR1 picks an object, places it in a fridge, and closes the door |

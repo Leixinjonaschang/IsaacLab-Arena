@@ -13,6 +13,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from isaaclab_arena.agentic_environment_generation.inference_backend import (
+    INFERENCE_ENDPOINT_ENV_VAR,
+    INFERENCE_ENDPOINTS,
+    INTERNAL_ENDPOINT,
+    OPENAI_ENDPOINT,
+    PUBLIC_ENDPOINT,
+)
+from isaaclab_arena.agentic_environment_generation.simready_asset_search import SimReadySearchConfig
 from isaaclab_arena.agentic_environment_generation.spec_io import env_graph_spec_path, write_env_graph_spec
 from isaaclab_arena.assets.object_type import ObjectType
 from isaaclab_arena.environment_spec.arena_env_graph_spec import ArenaEnvGraphSpec
@@ -25,6 +33,11 @@ from isaaclab_arena_examples.agentic_environment_generation.review_gui.editor_pa
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel import (
     DEFAULT_GENERATION_PROMPT,
     _apply_generated_yaml,
+    _clear_orphaned_generation_agents,
+    _default_inference_endpoint,
+    _generation_agent_cache_key,
+    _get_generation_agent,
+    available_inference_endpoints,
     run_generation_pipeline,
 )
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.simapp.client import (
@@ -34,6 +47,7 @@ from isaaclab_arena_examples.agentic_environment_generation.review_gui.simapp.cl
     wait_for_simapp_socket,
 )
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.simapp.sim_preview import (
+    _preview_cfg,
     parse_sim_preview_params,
 )
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.simapp_connector import (
@@ -43,6 +57,7 @@ from isaaclab_arena_examples.agentic_environment_generation.review_gui.simapp_co
 )
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.spec_visualization.asset_cards import (
     build_asset_cards,
+    object_set_member_key,
 )
 from isaaclab_arena_examples.agentic_environment_generation.review_gui.spec_visualization.mermaid_graph import (
     estimate_mermaid_height_px,
@@ -81,6 +96,11 @@ def session_state(monkeypatch):
 
 
 class TestSimPreviewParams:
+    def test_preview_cfg_uses_cpu_without_fabric(self):
+        cfg = _preview_cfg(num_envs=1, env_spacing=30.0)
+        assert cfg.device == "cpu"
+        assert cfg.disable_fabric
+
     def test_parse_sim_preview_params_requires_all_keys(self):
         with pytest.raises(ValueError, match="missing required sim preview params"):
             parse_sim_preview_params({})
@@ -91,6 +111,8 @@ class TestSimPreviewParams:
     def test_parse_sim_preview_params_rejects_invalid(self):
         with pytest.raises(AssertionError):
             parse_sim_preview_params({"num_envs": 0, "num_steps": 10, "env_spacing": 1.5})
+        with pytest.raises(AssertionError):
+            parse_sim_preview_params({"num_envs": 1, "num_steps": 0, "env_spacing": 1.5})
 
 
 class TestBuildAssetCards:
@@ -112,6 +134,29 @@ class TestBuildAssetCards:
         card_ids = {card.spec.id for card in build_asset_cards(spec)}
         assert card_ids
         assert any(ref.id in card_ids for ref in spec.object_references)
+
+    def test_object_set_yields_one_card_per_member(self):
+        spec = ArenaEnvGraphSpec.from_yaml(
+            _REPO_ROOT / "isaaclab_arena/tests/test_data/object_set_maple_table_env_graph.yaml"
+        )
+        (object_set,) = spec.object_sets
+        sweet_potato_key = object_set_member_key(object_set.id, "sweet_potato")
+        cards = build_asset_cards(
+            spec,
+            thumbnails={sweet_potato_key: b"fake"},
+            aabb_dimensions_m={sweet_potato_key: (0.1, 0.1, 0.2)},
+        )
+
+        member_cards = [card for card in cards if card.role == "object_set"]
+        assert [card.spec.registry_name for card in member_cards] == object_set.members
+        assert all(card.spec.id == object_set.id for card in member_cards)
+
+        # Snapshots are keyed per member, so one member's thumbnail never leaks onto its siblings.
+        sweet_potato = next(card for card in member_cards if card.spec.registry_name == "sweet_potato")
+        assert sweet_potato.thumbnail_bytes == b"fake"
+        assert sweet_potato.aabb_dimensions_m == (0.1, 0.1, 0.2)
+        jug = next(card for card in member_cards if card.spec.registry_name == "jug")
+        assert jug.thumbnail_bytes is None
 
 
 class TestMermaidHtml:
@@ -209,14 +254,14 @@ class TestParseArgs:
     def test_defaults_to_none_spec_path(self, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["streamlit_ui.py"])
         args = parse_args()
-        assert args.env_graph_spec_yaml is None
+        assert args.env_spec is None
 
-    def test_parses_env_graph_spec_yaml(self, monkeypatch, tmp_path: Path):
+    def test_parses_env_spec(self, monkeypatch, tmp_path: Path):
         spec_path = tmp_path / "spec.yaml"
         spec_path.write_text("env_name: x\n", encoding="utf-8")
-        monkeypatch.setattr(sys, "argv", ["streamlit_ui.py", "--env_graph_spec_yaml", str(spec_path)])
+        monkeypatch.setattr(sys, "argv", ["streamlit_ui.py", "--env_spec", str(spec_path)])
         args = parse_args()
-        assert args.env_graph_spec_yaml == spec_path
+        assert args.env_spec == spec_path
 
     def test_parses_out_dir(self, monkeypatch, tmp_path: Path):
         monkeypatch.setattr(sys, "argv", ["streamlit_ui.py", "--out_dir", str(tmp_path / "generated")])
@@ -295,6 +340,90 @@ class TestApplyGeneratedYaml:
         assert "_validation_result" not in session_state
 
 
+def _patch_generation_agent(agent: MagicMock | None):
+    """Stub the panel's agent accessor.
+
+    The real one caches the agent under a key built from the SimReady settings, so seeding a
+    session-state entry by name does not reach it.
+    """
+    return patch(
+        "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel._get_generation_agent",
+        return_value=agent,
+    )
+
+
+class TestInferenceEndpointSelection:
+    @pytest.fixture(autouse=True)
+    def clean_endpoint_env(self, monkeypatch):
+        monkeypatch.delenv(INFERENCE_ENDPOINT_ENV_VAR, raising=False)
+        for endpoint in INFERENCE_ENDPOINTS.values():
+            monkeypatch.delenv(endpoint.api_key_env_var, raising=False)
+
+    def test_available_endpoints_omit_unset_keys(self, monkeypatch):
+        monkeypatch.setenv(INTERNAL_ENDPOINT.api_key_env_var, "internal-key")
+        assert available_inference_endpoints() == [INTERNAL_ENDPOINT.name]
+
+    def test_available_endpoints_include_every_set_key(self, monkeypatch):
+        monkeypatch.setenv(INTERNAL_ENDPOINT.api_key_env_var, "internal-key")
+        monkeypatch.setenv(PUBLIC_ENDPOINT.api_key_env_var, "public-key")
+        monkeypatch.setenv(OPENAI_ENDPOINT.api_key_env_var, "openai-key")
+        assert available_inference_endpoints() == [
+            INTERNAL_ENDPOINT.name,
+            PUBLIC_ENDPOINT.name,
+            OPENAI_ENDPOINT.name,
+        ]
+
+    def test_default_falls_back_when_preferred_key_missing(self, monkeypatch):
+        monkeypatch.setenv(INFERENCE_ENDPOINT_ENV_VAR, PUBLIC_ENDPOINT.name)
+        monkeypatch.setenv(INTERNAL_ENDPOINT.api_key_env_var, "internal-key")
+        available = available_inference_endpoints()
+        assert PUBLIC_ENDPOINT.name not in available
+        assert _default_inference_endpoint(available) == INTERNAL_ENDPOINT.name
+
+    def test_default_prefers_arena_inference_endpoint_when_available(self, monkeypatch):
+        monkeypatch.setenv(INFERENCE_ENDPOINT_ENV_VAR, OPENAI_ENDPOINT.name)
+        monkeypatch.setenv(INTERNAL_ENDPOINT.api_key_env_var, "internal-key")
+        monkeypatch.setenv(OPENAI_ENDPOINT.api_key_env_var, "openai-key")
+        available = available_inference_endpoints()
+        assert _default_inference_endpoint(available) == OPENAI_ENDPOINT.name
+
+    def test_cache_key_includes_endpoint(self):
+        cfg = SimReadySearchConfig()
+        public_key = _generation_agent_cache_key(PUBLIC_ENDPOINT.name, simready_enabled=False, simready_config=cfg)
+        internal_key = _generation_agent_cache_key(INTERNAL_ENDPOINT.name, simready_enabled=False, simready_config=cfg)
+        assert public_key != internal_key
+        assert PUBLIC_ENDPOINT.name in public_key
+        assert INTERNAL_ENDPOINT.name in internal_key
+
+    def test_clear_orphaned_generation_agents_keeps_requested_key(self, session_state):
+        cfg = SimReadySearchConfig()
+        keep = _generation_agent_cache_key(PUBLIC_ENDPOINT.name, simready_enabled=False, simready_config=cfg)
+        other = _generation_agent_cache_key(INTERNAL_ENDPOINT.name, simready_enabled=False, simready_config=cfg)
+        session_state[keep] = object()
+        session_state[other] = object()
+        session_state["unrelated"] = "keep-me"
+        _clear_orphaned_generation_agents(keep=keep)
+        assert keep in session_state
+        assert other not in session_state
+        assert session_state["unrelated"] == "keep-me"
+
+    def test_get_generation_agent_retries_after_failed_init(self, session_state, monkeypatch):
+        monkeypatch.setenv(PUBLIC_ENDPOINT.api_key_env_var, "public-key")
+        session_state["inference_endpoint"] = PUBLIC_ENDPOINT.name
+        session_state["generation_agent_error"] = "previous failure"
+        mock_agent = MagicMock(name="generation-agent")
+        with patch(
+            "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.EnvironmentGenerationAgent",
+            side_effect=[AssertionError("transient"), mock_agent],
+        ) as mock_cls:
+            assert _get_generation_agent() is None
+            assert session_state["generation_agent_error"] == "transient"
+            assert _get_generation_agent() is mock_agent
+        assert mock_cls.call_count == 2
+        assert "generation_agent_error" not in session_state
+        assert mock_cls.call_args.kwargs["endpoint"] == PUBLIC_ENDPOINT.name
+
+
 class TestRunGenerationPipeline:
     def test_rejects_empty_prompt(self, session_state):
         ok, message = run_generation_pipeline("   ")
@@ -303,15 +432,18 @@ class TestRunGenerationPipeline:
 
     def test_fails_when_agent_unavailable(self, session_state):
         session_state["generation_agent_error"] = "missing key"
-        ok, message = run_generation_pipeline("pick up a cube")
+        with _patch_generation_agent(None):
+            ok, message = run_generation_pipeline("pick up a cube")
         assert not ok
         assert "missing key" in message
 
     def test_fails_when_catalogue_build_raises(self, session_state):
-        session_state["generation_agent"] = MagicMock()
-        with patch(
-            "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
-            side_effect=RuntimeError("registry unavailable"),
+        with (
+            _patch_generation_agent(MagicMock()),
+            patch(
+                "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
+                side_effect=RuntimeError("registry unavailable"),
+            ),
         ):
             ok, message = run_generation_pipeline("pick up a cube")
         assert not ok
@@ -323,33 +455,67 @@ class TestRunGenerationPipeline:
         session_state["out_dir"] = str(tmp_path)
         mock_agent = MagicMock()
         mock_agent.generate_spec.return_value = (valid_spec, None)
-        session_state["generation_agent"] = mock_agent
+        # Explicit, because a MagicMock attribute is truthy and would read as a missing asset.
+        mock_agent.unavailable_objects = ()
 
-        mock_catalogues = MagicMock()
-
-        with patch(
-            "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
-            return_value=mock_catalogues,
+        with (
+            _patch_generation_agent(mock_agent),
+            patch(
+                "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
+                return_value=MagicMock(),
+            ),
         ):
             ok, message = run_generation_pipeline("pick up a cube")
 
         assert ok
         assert "loaded into the YAML editor" in message
+        assert session_state["_generation_severity"] == "success"
         assert session_state["save_path"]
         assert Path(session_state["save_path"]).is_file()
+
+    def test_names_the_objects_no_asset_was_found_for(
+        self, session_state, valid_spec: ArenaEnvGraphSpec, tmp_path: Path
+    ):
+        session_state["out_dir"] = str(tmp_path)
+        mock_agent = MagicMock()
+        # The spec is valid: the object nothing was found for was never offered to spec inference.
+        mock_agent.generate_spec.return_value = (valid_spec, None)
+        mock_agent.unavailable_objects = ("green trash can",)
+        # Deliberately non-empty, though a successful generation leaves it empty: a success banner
+        # must not dump traces at the user, because the GUI renders them as a warning.
+        mock_agent.traces = ("a line the banner has no business showing",)
+
+        with (
+            _patch_generation_agent(mock_agent),
+            patch(
+                "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
+                return_value=MagicMock(),
+            ),
+        ):
+            ok, message = run_generation_pipeline("pick up a cube")
+
+        assert ok
+        # The banner names what the prompt asked for and did not get, so the swap is not silent.
+        assert "No asset was found for: green trash can" in message
+        assert "built without them" in message
+        assert "a line the banner has no business showing" not in message
+        # A silently substituted object is not a clean success, so the banner must not be green.
+        assert session_state["_generation_severity"] == "warning"
+        assert session_state["edited_text"]
+        assert session_state["save_path"]
 
     def test_save_failure_still_reports_success(self, session_state, valid_spec: ArenaEnvGraphSpec, tmp_path: Path):
         session_state["out_dir"] = str(tmp_path)
         mock_agent = MagicMock()
         mock_agent.generate_spec.return_value = (valid_spec, None)
-        session_state["generation_agent"] = mock_agent
-
-        mock_catalogues = MagicMock()
+        # Explicit, because a MagicMock attribute is truthy and would read as a missing asset.
+        mock_agent.unavailable_objects = ()
 
         with (
+            _patch_generation_agent(mock_agent),
             patch(
                 "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.get_catalogue_bundle",
-                return_value=mock_catalogues,
+                return_value=MagicMock(),
             ),
             patch(
                 "isaaclab_arena_examples.agentic_environment_generation.review_gui.generation_panel.try_save_env_graph_spec",
@@ -360,6 +526,7 @@ class TestRunGenerationPipeline:
 
         assert ok
         assert "save failed" in message.lower()
+        assert session_state["_generation_severity"] == "warning"
         assert session_state["edited_text"]
         assert "save_path" not in session_state
 
@@ -453,17 +620,20 @@ class TestSimAppSimPreview:
             response = client.run_sim_preview(
                 yaml_text,
                 num_envs=1,
-                num_steps=0,
-                env_spacing=1.5,
+                num_steps=2,
+                env_spacing=ENV_SPACING_M,
             )
             assert response["ok"] is True
 
-            first_frame = Path(response["first_frame"])
-            last_frame = Path(response["last_frame"])
-            assert first_frame.is_file() and first_frame.stat().st_size > 0
-            assert last_frame.is_file() and last_frame.stat().st_size > 0
+            video_path = Path(response["video_path"])
+            assert video_path.is_file() and video_path.stat().st_size > 0
             assert response["num_envs"] == 1
-            assert response["num_steps"] == 0
+            assert response["env_spacing"] == ENV_SPACING_M
+            assert response["num_steps"] == 2
+            assert client.ping()
+
+            video_path.unlink()
+            video_path.parent.rmdir()
 
             client.shutdown()
         finally:

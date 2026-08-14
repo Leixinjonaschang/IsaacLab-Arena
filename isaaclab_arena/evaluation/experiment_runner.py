@@ -10,7 +10,8 @@ from isaaclab_arena.evaluation.arena_experiment_config_loader import (
     load_arena_experiment_from_config_file,
     validate_experiment_config_path,
 )
-from isaaclab_arena.evaluation.arena_run import build_runs_info_table
+from isaaclab_arena.evaluation.arena_experiment_result import ArenaExperimentResult, build_arena_run_result_metadata
+from isaaclab_arena.evaluation.arena_run import ArenaRunResult, build_runs_info_table
 from isaaclab_arena.evaluation.experiment_runner_cli import parse_experiment_runner_args
 from isaaclab_arena.evaluation.legacy_experiment_runner import (
     legacy_json_experiment_requires_cameras,
@@ -18,6 +19,7 @@ from isaaclab_arena.evaluation.legacy_experiment_runner import (
     run_legacy_json_in_chunks,
 )
 from isaaclab_arena.evaluation.run_execution import build_arena_builder_from_run_cfg, execute_experiment
+from isaaclab_arena.hydra.typed_experiment_yaml_search import typed_experiment_requires_cameras
 from isaaclab_arena.metrics.metrics_logger import MetricsLogger
 from isaaclab_arena.utils.isaaclab_utils.simulation_app import SimulationAppContext
 from isaaclab_arena.video.video_recording import timestamped_run_dir
@@ -34,22 +36,23 @@ def list_variations(experiment_cfg: ArenaExperimentCfg) -> None:
         print(arena_builder.get_variations_catalogue_as_string(), flush=True)
 
 
-# TODO(cvolk, 2026-07-10): [typed-config-migration] Typed YAML is composed only
-# after SimulationApp starts, so experiment_runner cannot determine camera requirements
-# in time to configure AppLauncher. Add enable_cameras to ArenaEnvironmentCfg,
-# update each factory to honor it or reject unsupported cameras, and apply YAML
-# values and Hydra overrides before startup. Enable AppLauncher when any Run enables
-# cameras, then remove this getattr and the requirement to also pass --enable_cameras.
+def _experiment_requires_cameras(
+    experiment_config_path: Path,
+    legacy_experiment_config: dict | None,
+    experiment_overrides: list[str],
+) -> bool:
+    """Return whether an Experiment enables environment cameras, reading it before startup."""
+    if legacy_experiment_config is not None:
+        return legacy_json_experiment_requires_cameras(legacy_experiment_config)
+    return typed_experiment_requires_cameras(experiment_config_path, experiment_overrides)
+
+
 def _assert_camera_support_enabled(experiment_cfg: ArenaExperimentCfg, enable_cameras: bool) -> None:
     """Check that AppLauncher enabled camera support requested by typed Runs."""
-    camera_run_names = [
-        run_cfg.name
-        for run_cfg in experiment_cfg.runs.values()
-        if getattr(run_cfg.environment, "enable_cameras", False)
-    ]
+    camera_run_names = [run_cfg.name for run_cfg in experiment_cfg.runs.values() if run_cfg.environment.enable_cameras]
     assert not camera_run_names or enable_cameras, (
-        f"Runs {camera_run_names} enable environment cameras. Pass --enable_cameras so AppLauncher enables "
-        "camera support before the typed Experiment is composed."
+        f"Runs {camera_run_names} enable environment cameras but AppLauncher started without camera support. "
+        "The camera requirements read from the Experiment before startup disagree with the composed Experiment."
     )
 
 
@@ -66,6 +69,27 @@ def _assert_exact_experiment_output_directory_is_available(experiment_output_dir
         )
 
 
+def _write_arena_experiment_result(
+    experiment_cfg: ArenaExperimentCfg,
+    run_results: list[ArenaRunResult],
+    experiment_output_directory: Path,
+) -> Path:
+    """Combine every Run's metadata and episode results into one Experiment JSON file."""
+    run_results_by_name = {run_result.run_name: run_result for run_result in run_results}
+    assert len(run_results_by_name) == len(run_results), "Experiment results must contain each Run exactly once"
+    assert set(run_results_by_name) == set(
+        experiment_cfg.runs
+    ), "Experiment results must contain exactly the configured Runs"
+    run_metadata_by_name = {
+        run_name: {
+            **build_arena_run_result_metadata(run_cfg),
+            "status": run_results_by_name[run_name].status.value,
+        }
+        for run_name, run_cfg in experiment_cfg.runs.items()
+    }
+    return ArenaExperimentResult(experiment_output_directory, run_metadata_by_name).write()
+
+
 def main():
     args_cli, experiment_overrides = parse_experiment_runner_args()
     experiment_config_path = validate_experiment_config_path(args_cli.experiment_config)
@@ -74,8 +98,9 @@ def main():
         experiment_overrides,
     )
 
-    if args_cli.record_camera_video or (
-        legacy_experiment_config is not None and legacy_json_experiment_requires_cameras(legacy_experiment_config)
+    # AppLauncher must enable camera support before SimulationApp starts. Check if this is required.
+    if args_cli.record_camera_video or _experiment_requires_cameras(
+        experiment_config_path, legacy_experiment_config, experiment_overrides
     ):
         args_cli.enable_cameras = True
 
@@ -121,6 +146,8 @@ def main():
             device=args_cli.device,
             overrides=experiment_overrides,
         )
+        for run_name in experiment_cfg.runs:
+            ArenaExperimentResult.assert_run_name_is_safe_path_component(run_name)
         _assert_camera_support_enabled(experiment_cfg, args_cli.enable_cameras)
         metrics_logger = MetricsLogger()
 
@@ -129,19 +156,21 @@ def main():
         if args_cli.record_viewport_video:
             print(f"[INFO] Video recording enabled. Videos will be saved to: {experiment_output_directory}")
 
-        results = execute_experiment(
+        run_results = execute_experiment(
             experiment_cfg,
             output_dir=experiment_output_directory,
             record_viewport_video=args_cli.record_viewport_video,
             record_camera_video=args_cli.record_camera_video,
             continue_on_error=args_cli.continue_on_error,
         )
-        for result in results:
-            if result.metrics is not None:
-                metrics_logger.append_job_metrics(result.run_name, result.metrics)
+        for run_result in run_results:
+            if run_result.metrics is not None:
+                metrics_logger.append_job_metrics(run_result.run_name, run_result.metrics)
 
-        print(build_runs_info_table(experiment_cfg.runs.values(), results))
+        print(build_runs_info_table(experiment_cfg.runs.values(), run_results))
         metrics_logger.print_metrics()
+
+        _write_arena_experiment_result(experiment_cfg, run_results, experiment_output_directory)
 
         # Write HTML report.
         report_path = build_report(experiment_output_directory)

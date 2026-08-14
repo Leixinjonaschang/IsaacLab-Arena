@@ -6,9 +6,8 @@
 import torch
 import traceback
 
-from isaaclab_arena.tests.utils.subprocess import run_simulation_app_function
+from isaaclab_arena.tests.utils.persistent_simulation_app import run_function_with_persistent_simulation_app
 
-NUM_STEPS = 1
 HEADLESS = True
 
 
@@ -57,19 +56,17 @@ def _test_press_button_coffee_machine(simulation_app) -> bool:
 
     from isaaclab.envs.manager_based_env import ManagerBasedEnv
 
-    from isaaclab_arena.tests.utils.simulation import step_zeros_and_call
-
     # Get the scene
     env, coffee_machine = get_test_environment(num_envs=1)
 
-    def assert_pressed(env: ManagerBasedEnv, terminated: torch.Tensor):
+    def assert_pressed(env: ManagerBasedEnv):
         is_pressed = coffee_machine.is_pressed(env)
         assert is_pressed.shape == torch.Size([1])
         assert is_pressed.item()
         if not is_pressed.item():
             print("Coffee machine is not pressed")
 
-    def assert_unpressed(env: ManagerBasedEnv, terminated: torch.Tensor):
+    def assert_unpressed(env: ManagerBasedEnv):
         is_pressed = coffee_machine.is_pressed(env)
         assert is_pressed.shape == torch.Size([1]), "Is pressed shape is not correct"
         assert not is_pressed.item(), "The coffee machine is pressed when it should not be"
@@ -78,14 +75,15 @@ def _test_press_button_coffee_machine(simulation_app) -> bool:
 
     try:
 
+        # press()/unpress() write the button joint position directly, and is_pressed() reads it straight back,
+        # so the pressed state is checked immediately: the buttons are spring-loaded and relax back through the
+        # pressedness threshold within a single 15 Hz control step, so stepping the sim first would lose it.
         print("Pressing coffee machine button")
         coffee_machine.press(env, env_ids=None)
-        step_zeros_and_call(env, NUM_STEPS, assert_pressed)
+        assert_pressed(env)
         print("Unpressing coffee machine button")
-        # Note: Coffee machine buttons spring back to their original position, so we need to press it again, then unpress it.
-        coffee_machine.press(env, env_ids=None)
         coffee_machine.unpress(env, env_ids=None)
-        step_zeros_and_call(env, NUM_STEPS, assert_unpressed)
+        assert_unpressed(env)
 
     except Exception as e:
         print(f"Error: {e}")
@@ -100,55 +98,48 @@ def _test_press_button_coffee_machine(simulation_app) -> bool:
 
 def _test_press_button_coffee_machine_multiple_envs(simulation_app) -> bool:
 
-    from isaaclab_arena.tests.utils.simulation import step_zeros_and_call
-
     env, coffee_machine = get_test_environment(num_envs=2)
 
     try:
 
+        # press()/unpress() write the button joint positions directly and is_pressed() reads them straight
+        # back, so each per-env mask is checked immediately. Stepping the sim first would let the spring-loaded
+        # buttons relax below the pressedness threshold within a single 15 Hz control step and lose the state.
         with torch.inference_mode():
             # Press both
             coffee_machine.press(env, None)
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [True, True]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([True, True], device=env.device))
 
             # Unpress both
             coffee_machine.unpress(env, None)
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [False, False]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([False, False], device=env.device))
 
             # Press first
             coffee_machine.press(env, torch.tensor([0]))
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [True, False]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([True, False], device=env.device))
 
             # Press second
             coffee_machine.press(env, torch.tensor([1]))
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [True, True]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([True, True], device=env.device))
 
-            # Unpress second
-            # Note: Coffee machine buttons spring back to their original position, so we need to press it again, then unpress it.
+            # Unpress second (press both first so the target state is set explicitly regardless of history).
             coffee_machine.press(env, None)
             coffee_machine.unpress(env, torch.tensor([1]))
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [True, False]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([True, False], device=env.device))
 
-            # Unpress first
-            # Note: Coffee machine buttons spring back to their original position, so we need to press it again, then unpress it.
+            # Unpress first (press both first so the target state is set explicitly regardless of history).
             coffee_machine.press(env, None)
             coffee_machine.unpress(env, torch.tensor([0]))
-            step_zeros_and_call(env, NUM_STEPS)
             is_pressed = coffee_machine.is_pressed(env)
             print(f"expected: [False, True]: got: {is_pressed}")
             assert torch.all(is_pressed == torch.tensor([False, True], device=env.device))
@@ -165,7 +156,7 @@ def _test_press_button_coffee_machine_multiple_envs(simulation_app) -> bool:
 
 
 def test_press_button_coffee_machine():
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_press_button_coffee_machine,
         headless=HEADLESS,
     )
@@ -173,7 +164,7 @@ def test_press_button_coffee_machine():
 
 
 def test_press_button_coffee_machine_multiple_envs():
-    result = run_simulation_app_function(
+    result = run_function_with_persistent_simulation_app(
         _test_press_button_coffee_machine_multiple_envs,
         headless=HEADLESS,
     )

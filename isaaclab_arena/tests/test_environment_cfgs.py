@@ -25,9 +25,6 @@ from isaaclab_arena_environments.cli import (
     ensure_environments_registered,
 )
 from isaaclab_arena_environments.example_environment_base import ExampleEnvironmentBase
-from isaaclab_arena_environments.galileo_g1_static_pick_and_place_environment import (
-    GalileoG1StaticPickAndPlaceEnvironment,
-)
 from isaaclab_arena_environments.gr1_put_and_close_door_environment import GR1PutAndCloseDoorEnvironment
 from isaaclab_arena_environments.gr1_table_multi_object_no_collision_environment import (
     GR1TableMultiObjectNoCollisionEnvironment,
@@ -90,6 +87,8 @@ def test_every_registered_cli_adapter_uses_its_typed_cfg_defaults():
 
 def test_generated_cli_arguments_and_cfg_validation():
     """Keep list, boolean, and scalar parsing while configs validate domain values."""
+    assert PickAndPlaceMapleTableEnvironmentCfg().episode_length_s == 70.0
+
     test_cases = [
         (
             GR1PutAndCloseDoorEnvironment,
@@ -97,13 +96,24 @@ def test_generated_cli_arguments_and_cfg_validation():
             {"object_set": ["cracker_box", "mustard_bottle"]},
         ),
         (GR1PutAndCloseDoorEnvironment, ["--object_set"], {"object_set": []}),
-        (GalileoG1StaticPickAndPlaceEnvironment, ["--no-lock_waist"], {"lock_waist": False}),
         (LiftObjectEnvironment, ["--rl_training_mode"], {"rl_training_mode": True}),
         (GR1TableMultiObjectNoCollisionEnvironment, ["--mode", "heterogeneous"], {"mode": "heterogeneous"}),
         (
             PickAndPlaceMapleTableEnvironment,
-            ["--light_intensity", "750", "--additional_table_objects", "apple", "banana"],
-            {"light_intensity": 750.0, "additional_table_objects": ["apple", "banana"]},
+            [
+                "--light_intensity",
+                "750",
+                "--additional_table_objects",
+                "apple",
+                "banana",
+                "--episode_length_s",
+                "1.5",
+            ],
+            {
+                "light_intensity": 750.0,
+                "additional_table_objects": ["apple", "banana"],
+                "episode_length_s": 1.5,
+            },
         ),
     ]
 
@@ -116,6 +126,13 @@ def test_generated_cli_arguments_and_cfg_validation():
     invalid_mode_args = _parse_legacy_arguments(GR1TableMultiObjectNoCollisionEnvironment, ["--mode", "unsupported"])
     with pytest.raises(AssertionError, match="Unsupported placement mode"):
         _environment_cfg_from_cli(GR1TableMultiObjectNoCollisionEnvironment, invalid_mode_args)
+
+    invalid_episode_length_args = _parse_legacy_arguments(
+        PickAndPlaceMapleTableEnvironment,
+        ["--episode_length_s", "0"],
+    )
+    with pytest.raises(AssertionError, match="episode_length_s must be greater than zero"):
+        _environment_cfg_from_cli(PickAndPlaceMapleTableEnvironment, invalid_episode_length_args)
 
 
 def test_build_environment_from_cli_calls_typed_build(monkeypatch):

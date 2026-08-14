@@ -9,9 +9,11 @@ import subprocess
 
 import pytest
 
+from isaaclab_arena.evaluation.arena_experiment_result import ARENA_EXPERIMENT_RESULT_FILENAME
 from isaaclab_arena.evaluation.experiment_runner_cli import parse_experiment_runner_args
 from isaaclab_arena.tests.utils.constants import TestConstants
-from isaaclab_arena.tests.utils.subprocess import run_simulation_app_function, run_subprocess
+from isaaclab_arena.tests.utils.persistent_simulation_app import run_function_with_persistent_simulation_app
+from isaaclab_arena.tests.utils.subprocess import run_subprocess
 
 HEADLESS = True
 NUM_STEPS = 2
@@ -176,6 +178,17 @@ runs:
     assert run_cells[4] == "2"
     assert (tmp_path / "output/index.html").is_file()
     assert (tmp_path / "output/yaml_baseline/episode_results_rebuild0.jsonl").is_file()
+    experiment_result_path = tmp_path / "output" / ARENA_EXPERIMENT_RESULT_FILENAME
+    experiment_result = json.loads(experiment_result_path.read_text(encoding="utf-8"))
+    assert list(experiment_result["runs"]) == ["yaml_baseline"]
+    run_result = experiment_result["runs"]["yaml_baseline"]
+    assert run_result["environment"] == {
+        "name": "pick_and_place_maple_table",
+        "definition": "pick_and_place_maple_table",
+    }
+    assert run_result["policy_variant"] == "zero_action"
+    assert run_result["status"] == "completed"
+    assert set(run_result) == {"environment", "policy_variant", "status", "rebuilds"}
 
 
 @pytest.mark.with_subprocess
@@ -418,7 +431,7 @@ def _test_eval_config_variation_lands_in_events_cfg(simulation_app):
 
 @pytest.mark.with_cameras
 def test_eval_config_variation_lands_in_events_cfg():
-    assert run_simulation_app_function(
+    assert run_function_with_persistent_simulation_app(
         _test_eval_config_variation_lands_in_events_cfg,
         headless=HEADLESS,
         enable_cameras=True,
