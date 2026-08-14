@@ -19,7 +19,7 @@ class LiftCubeFrankajointEnvironmentCfg(ArenaEnvironmentCfg):
 
     object: str = "dex_cube"
     teleop_device: str | None = None
-    embodiment: str = "franka_joint_pos"
+    embodiment: str = "franka_joint_pos" # set the joint control mode
     """Use joint control by default because it is more reliable than IK for RL training."""
     rl_training_mode: bool = True
 
