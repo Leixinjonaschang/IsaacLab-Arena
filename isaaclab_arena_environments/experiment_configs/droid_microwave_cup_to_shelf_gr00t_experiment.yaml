@@ -1,0 +1,25 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+runs:
+  droid_microwave_cup_to_shelf_gr00t:
+    environment:
+      type: droid_microwave_cup_to_shelf
+      enable_cameras: true
+      embodiment: droid_abs_joint_pos
+      hdr: home_office_robolab
+    environment_builder:
+      language_instruction: Open the microwave, take the cup out of it and place the cup on the shelf.
+    policy:
+      # GR00T N1.6-DROID: the OXE_DROID embodiment tag consumes the DROID wrist and external RGB
+      # cameras this environment renders, and emits the absolute joint positions droid_abs_joint_pos
+      # expects.
+      type: isaaclab_arena_gr00t.policy.gr00t_remote_closedloop_policy.Gr00tRemoteClosedloopPolicy
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/droid_manip_gr00t_closedloop_config.yaml
+      policy_device: cuda:0
+      remote_host: 127.0.0.1
+      remote_port: 5555
+    rollout_limit:
+      num_episodes: 3
