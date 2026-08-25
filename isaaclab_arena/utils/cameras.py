@@ -186,3 +186,33 @@ def get_viewer_cfg_look_at_object(lookat_object: Asset, offset: np.ndarray) -> V
     camera_vec = np.array(lookat, dtype=float) + np.array(offset, dtype=float)
     camera_position = tuple(float(x) for x in camera_vec.tolist())
     return ViewerCfg(eye=camera_position, lookat=lookat, origin_type="env")
+
+
+def get_viewer_cfg_from_robot_body(
+    body_name: str,
+    eye: tuple[float, float, float],
+    lookat: tuple[float, float, float],
+    asset_name: str = "robot",
+) -> ViewerCfg:
+    """Create a viewer configuration anchored to one of the robot's bodies.
+
+    Isaac Lab takes the body's world position as the viewer origin and then adds ``eye`` and
+    ``lookat`` along world axes, so the view follows where the body goes but not which way it
+    faces.
+
+    Args:
+        body_name: Body in ``asset_name`` to anchor the view to, e.g. ``"link_pitch_head"``.
+        eye: Camera position as a world-axis offset from the body, in metres.
+        lookat: Point the camera aims at, as a world-axis offset from the body, in metres.
+        asset_name: Scene entity holding the body. Defaults to the robot.
+
+    Returns:
+        ViewerCfg anchored to the body.
+    """
+    return ViewerCfg(
+        eye=tuple(float(v) for v in eye),
+        lookat=tuple(float(v) for v in lookat),
+        origin_type="asset_body",
+        asset_name=asset_name,
+        body_name=body_name,
+    )

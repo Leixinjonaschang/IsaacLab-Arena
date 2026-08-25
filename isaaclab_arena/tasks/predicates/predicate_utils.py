@@ -30,6 +30,11 @@ def get_root_pos_w(env, name: str) -> torch.Tensor:
     return wp.to_torch(get_rigid_object(env, name).data.root_pos_w)
 
 
+def get_root_quat_w(env, name: str) -> torch.Tensor:
+    """Get the root orientation of a rigid object in the world frame."""
+    return wp.to_torch(get_rigid_object(env, name).data.root_quat_w)
+
+
 def get_root_lin_vel_w(env, name: str) -> torch.Tensor:
     """Get the root linear velocity of a rigid object in the world frame."""
     return wp.to_torch(get_rigid_object(env, name).data.root_lin_vel_w)

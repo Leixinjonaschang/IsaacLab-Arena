@@ -137,6 +137,20 @@ class AgibotKeyboardRetargeter(RetargetterBase):
 
 
 @register_retargeter
+class AgibotDualArmKeyboardRetargeter(RetargetterBase):
+    """No retargeting needed: the device already emits the Agibot's 14-value action layout."""
+
+    device = "dual_arm_keyboard"
+    embodiment = "agibot"
+
+    def __init__(self):
+        pass
+
+    def get_pipeline_builder(self, embodiment: object) -> Callable | None:
+        return None
+
+
+@register_retargeter
 class GalbotKeyboardRetargeter(RetargetterBase):
     device = "keyboard"
     embodiment = "galbot"

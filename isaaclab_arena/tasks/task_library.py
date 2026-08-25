@@ -13,6 +13,7 @@ from isaaclab_arena.tasks import (  # noqa: F401
     close_door_task,
     goal_pose_task,
     lift_object_task,
+    make_toast_task,
     no_task,
     open_door_task,
     pick_and_place_task,
@@ -21,5 +22,6 @@ from isaaclab_arena.tasks import (  # noqa: F401
     rotate_revolute_joint_task,
     sequential_task_base,
     sorting_task,
+    stack_bowls_task,
     turn_knob_task,
 )
