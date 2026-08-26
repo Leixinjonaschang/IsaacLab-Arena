@@ -114,11 +114,19 @@ def install_arm_target_hold(env_cfg) -> None:
     Args:
         env_cfg: The compiled environment configuration, patched in place.
     """
+    rmpflow_terms = [
+        (term_name, term_cfg)
+        for term_name, term_cfg in vars(env_cfg.actions).items()
+        if isinstance(term_cfg, RMPFlowActionCfg)
+    ]
+    if not rmpflow_terms:
+        # Joint-position action terms hold whatever target they were last given, so there is no
+        # idle drift to fix -- e.g. an env rebuilt with joint-space actions for demo recording.
+        return
+
     held_terms = []
-    for term_name, term_cfg in vars(env_cfg.actions).items():
-        if not isinstance(term_cfg, RMPFlowActionCfg) or isinstance(term_cfg, TargetHoldingRMPFlowActionCfg):
-            continue
-        if not term_cfg.use_relative_mode:
+    for term_name, term_cfg in rmpflow_terms:
+        if isinstance(term_cfg, TargetHoldingRMPFlowActionCfg) or not term_cfg.use_relative_mode:
             continue
         held = TargetHoldingRMPFlowActionCfg(**{f.name: getattr(term_cfg, f.name) for f in fields(term_cfg)})
         held.class_type = TargetHoldingRMPFlowAction

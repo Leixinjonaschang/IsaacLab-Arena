@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from dataclasses import MISSING
 
 import isaaclab.envs.mdp as mdp
+import isaaclab.sim as sim_utils
 import isaaclab.utils.math as PoseUtils
 from isaaclab.controllers.config.rmp_flow import AGIBOT_LEFT_ARM_RMPFLOW_CFG, AGIBOT_RIGHT_ARM_RMPFLOW_CFG
 from isaaclab.envs.common import ViewerCfg
@@ -17,6 +18,7 @@ from isaaclab.managers import EventTermCfg
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.markers.config import FRAME_MARKER_CFG
+from isaaclab.sensors import CameraCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg, OffsetCfg
 from isaaclab.utils.configclass import configclass
 from isaaclab_assets.robots.agibot import AGIBOT_A2D_CFG
@@ -25,10 +27,11 @@ from isaaclab_tasks.manager_based.manipulation.stack.mdp import ee_frame_pose_in
 
 from isaaclab_arena.assets.register import register_asset
 from isaaclab_arena.embodiments.common.arm_mode import ArmMode
+from isaaclab_arena.embodiments.common.smooth_joint_actions import SmoothJointPositionActionCfg
 from isaaclab_arena.embodiments.embodiment_base import EmbodimentBase
 from isaaclab_arena.embodiments.franka.franka import FrankaMimicEnv
 from isaaclab_arena.terms.events import reset_joint_position_and_velocity_to_defaults
-from isaaclab_arena.utils.cameras import get_viewer_cfg_from_robot_body
+from isaaclab_arena.utils.cameras import ArenaCameraCfg, get_viewer_cfg_from_robot_body
 from isaaclab_arena.utils.pose import Pose
 
 # --- Arena's default Agibot configuration ---------------------------------------------------
@@ -83,6 +86,35 @@ AGIBOT_RIGHT_ARM_ARENA_RMPFLOW_CFG = copy.deepcopy(AGIBOT_RIGHT_ARM_RMPFLOW_CFG)
 AGIBOT_RIGHT_ARM_ARENA_RMPFLOW_CFG.collision_file = os.path.join(_RMPFLOW_DIR, "agibot_right_arm_gripper.yaml")
 
 
+@configclass
+class AgibotCameraCfg(ArenaCameraCfg):
+    """Camera rig for the Agibot: the head view, as a recordable sensor.
+
+    Reproduces ``get_head_viewer_cfg``'s framing -- same eye, gaze and field of view -- so
+    recorded observations match what a teleoperator saw in the viewport. Mounted under
+    ``base_link`` rather than the head link because the viewer offsets are world-axis values
+    (see ``HEAD_VIEW_EYE``); the head holds its default pose through the reset event, so the
+    two mounts see the same thing, and the base frame is the one the offsets are stated in.
+    """
+
+    head_cam: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base_link/HeadCam",
+        update_period=0.0,
+        height=512,
+        width=512,
+        data_types=["rgb"],
+        # The Kit viewport's field of view, matching the teleop view and the demo recordings.
+        spawn=sim_utils.PinholeCameraCfg(focal_length=18.147, horizontal_aperture=20.955, clipping_range=(0.05, 30.0)),
+        offset=CameraCfg.OffsetCfg(
+            # HEAD_VIEW_EYE above the measured head position (-0.157, 0, 1.263), in base frame.
+            pos=(0.443, 0.0, 1.683),
+            # Looking along HEAD_VIEW_LOOKAT - HEAD_VIEW_EYE = (0.66, 0, -1.05), no roll.
+            rot=(0.19581, -0.19581, -0.67946, 0.67946),
+            convention="opengl",
+        ),
+    )
+
+
 @register_asset
 class AgibotEmbodiment(EmbodimentBase):
     """Embodiment for the Agibot robot."""
@@ -128,6 +160,7 @@ class AgibotEmbodiment(EmbodimentBase):
             self.action_config = AgibotRightArmActionsCfg()
         self.observation_config = AgibotObservationsCfg()
         self.event_config = AgibotEventCfg()
+        self.camera_config = AgibotCameraCfg()
         self.mimic_env = AgibotMimicEnv
 
     def get_head_viewer_cfg(self, lookat: tuple[float, float, float] | None = None) -> ViewerCfg:
@@ -321,6 +354,59 @@ class AgibotDualArmActionsCfg:
         joint_names=["right_hand_joint1", "right_.*_Support_Joint"],
         open_command_expr={"right_hand_joint1": 0.994, "right_.*_Support_Joint": 0.994},
         close_command_expr={"right_hand_joint1": 0.0, "right_.*_Support_Joint": 0.0},
+    )
+
+
+@configclass
+class AgibotDualArmJointActionsCfg:
+    """Action configuration driving both Agibot arms in joint space, without RMPFlow.
+
+    Every value is an absolute joint position target. This exists for scripted demonstration
+    recording: cuMotion's planned trajectories are joint paths, and playing them through the
+    RMPFlow terms would re-solve -- and fight -- motions that are already solved. Driving the
+    same targets through the action manager instead of writing them straight to the articulation
+    is what lets Isaac Lab's recorder hooks see every step.
+
+    The ARM terms are first-order-hold (``SmoothJointPositionActionCfg``): a zero-order hold at
+    Arena's 15 Hz control rate jolts the stiff arms hard enough at each control step to work a
+    pinched slab out of the gripper mid-carry, which RMPFlow's per-substep smoothing never did.
+    The GRIPPER terms are deliberately plain zero-order holds: the smooth term restarts its ramp
+    from the *measured* position every control step, and a gripper blocked open by the object it
+    is holding then has its squeeze commanded from zero to full 15 times a second -- a pulsing
+    grip that measurably walked a rim-held bowl out of the left hand mid-carry (97-138 mm of
+    in-hand drift versus 13 mm under constant targets). A constant target is also what the
+    binary gripper action and the direct-write executor have always applied.
+
+    Field order is load-bearing, as in ``AgibotDualArmActionsCfg``: ``[left arm (7), left gripper
+    (one per finger joint), right arm (7), right gripper]``.
+    """
+
+    left_arm_action = SmoothJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["left_arm_joint.*"],
+        scale=1.0,
+        use_default_offset=False,
+    )
+
+    left_gripper_action = mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["left_hand_joint1", "left_.*_Support_Joint"],
+        scale=1.0,
+        use_default_offset=False,
+    )
+
+    right_arm_action = SmoothJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["right_arm_joint.*"],
+        scale=1.0,
+        use_default_offset=False,
+    )
+
+    right_gripper_action = mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["right_hand_joint1", "right_.*_Support_Joint"],
+        scale=1.0,
+        use_default_offset=False,
     )
 
 

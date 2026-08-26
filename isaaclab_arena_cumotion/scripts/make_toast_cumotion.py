@@ -288,15 +288,6 @@ parser.add_argument(
 parser.add_argument("--chest-x", type=float, default=0.30, help="Handover point ahead of the robot base, in m.")
 parser.add_argument("--chest-z", type=float, default=1.00, help="Handover height above the robot base, in m.")
 parser.add_argument(
-    "--handover-depth",
-    type=float,
-    default=0.085,
-    help=(
-        "Where the receiving arm pinches, below the slice's top edge, in m. Must clear the giving"
-        " arm's own grip at --grasp-depths; the slice is 116 mm tall, so this is the lower half."
-    ),
-)
-parser.add_argument(
     "--pose-trace",
     type=str,
     default=None,
@@ -309,6 +300,12 @@ parser.add_argument(
 parser.add_argument("--settle-steps", type=int, default=60)
 AppLauncher.add_app_launcher_args(parser)
 args, _ = parser.parse_known_args()
+# Each stage aims at where the previous one left the slice, so a later flag without the earlier
+# ones has nothing to act on; failing here beats a silent skip after minutes of sim startup.
+assert not args.handover or args.carry, "--handover builds on --carry; pass both"
+assert not args.insert or args.handover, "--insert builds on --handover; pass both"
+# The head camera is created unconditionally, so the app must always bring the camera pipeline up.
+args.enable_cameras = True
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
@@ -327,6 +324,7 @@ from isaaclab_arena.cli.isaaclab_arena_cli import (  # noqa: E402
     get_isaaclab_arena_cli_parser,
 )
 from isaaclab_arena.environments.arena_env_builder import ArenaEnvBuilder  # noqa: E402
+from isaaclab_arena_cumotion.embodiment_cumotion_registry import get_embodiment_cumotion_cfg  # noqa: E402
 from isaaclab_arena_cumotion.executor import ArmExecutor  # noqa: E402
 from isaaclab_arena_cumotion.grasps import (  # noqa: E402
     _rot_about,
@@ -351,13 +349,13 @@ BREAD_BBOX_MAX_M = (0.0586, 0.0578, 0.0115)
 SHELF_EXTENTS_M = (0.1583, 0.0835, 0.0762)
 TOASTER_EXTENTS_M = (0.2267, 0.1554, 0.1619)
 
-# The toaster's two bread slots, as four-corner rectangles in its own frame, from the asset's
-# ``passive.functional`` metadata -- the same numbers the task's success check tests against.
-SLOTS_LOCAL = {
-    "toast_slot1": ((-0.078, 0.072), (-0.041, -0.011)),
-    "toast_slot2": ((-0.078, 0.072), (0.014, 0.039)),
-}
-SLOT_Z_LOCAL_M = -0.051
+# The slot rectangles come from the Toaster asset class, so the numbers the insertion aims at are
+# the same objects the task's success check reads -- a second copy here once risked drifting
+# silently whenever the task side moved.
+from isaaclab_arena.assets.local_objects import Toaster  # noqa: E402
+
+SLOTS_LOCAL = Toaster.SLOT_RECT_LOCAL_M
+SLOT_Z_LOCAL_M = Toaster.SLOT_Z_LOCAL_M
 
 TABLE_TOP_Z = 0.6232
 TABLE_OBSTACLE = "/obstacles/table"
@@ -367,6 +365,7 @@ arena_args = get_isaaclab_arena_cli_parser().parse_args(["--num_envs", "1", "--e
 factory = EnvironmentRegistry().get_component_by_name(args.env)()
 arena_env = factory.build(factory._legacy_argparse_cfg_type(teleop_device=None))
 embodiment_type = type(arena_env.embodiment)
+TOOL_FRAMES = {arm: get_embodiment_cumotion_cfg(arena_env.embodiment, arm).tool_frame for arm in ("left", "right")}
 builder = ArenaEnvBuilder(arena_env, arena_env_builder_cfg_from_argparse(arena_args))
 env = builder.make_registered().unwrapped
 
@@ -429,8 +428,7 @@ def _tool_pose_row():
 
     robot = env.scene.articulations["robot"]
     names = list(robot.data.body_names)
-    tool = "right_gripper_center" if args.arm == "right" else "gripper_center"
-    index = names.index(tool)
+    index = names.index(TOOL_FRAMES[args.arm])
     position = wp.to_torch(robot.data.body_pos_w)[0, index].detach().cpu().numpy().astype(np.float64)
     quat_xyzw = wp.to_torch(robot.data.body_quat_w)[0, index].detach().cpu()
     rotation = math_utils.matrix_from_quat(quat_xyzw.float().unsqueeze(0))[0].numpy().astype(np.float64)
@@ -447,7 +445,7 @@ def _tool_pose_row():
     slice_p, slice_r = _object_pose_for_report(traced_slice[0])
     normal = slice_r @ np.array(BREAD_FACE_NORMAL_LOCAL)
     tilt = float(np.degrees(np.arccos(abs(np.clip(normal[2], -1.0, 1.0)))))
-    hands = [names.index(n) for n in ("right_gripper_center", "gripper_center") if n in names]
+    hands = [names.index(n) for n in TOOL_FRAMES.values() if n in names]
     body_pos = wp.to_torch(robot.data.body_pos_w)[0].detach().cpu().numpy().astype(np.float64)
     nearest = min(float(np.linalg.norm(body_pos[i] - slice_p)) for i in hands)
     return (
@@ -726,6 +724,11 @@ pick = pick_place.pick(
     pregrasp_gripper_pos=args.pregrasp_open * planner.cfg.gripper_open_pos,
     max_attempts=args.max_attempts,
 )
+# Sampled now, while the slice is actually in the fingers: the outcome section prints these, and
+# by the time it runs the slice may have been inserted and the hand withdrawn -- measured there,
+# a successful run once reported itself "held 489.3 mm from the slice's centre".
+pick_rise_mm = (object_position(target)[2] - start_z) * 1000.0
+pick_held_mm = float(np.linalg.norm(planner.tool_position() - object_position(target))) * 1000.0
 for line in pick.trace:
     print(f"  {line}")
 
@@ -871,6 +874,11 @@ if args.handover and carry_ok:
     )
     other_planner.add_scene_object_obstacle("bread_shelf", SHELF_EXTENTS_M)
     other_planner.add_scene_object_obstacle("toaster", TOASTER_EXTENTS_M)
+    # The slices still in the rack are obstacles to this arm too; the held one is not, since the
+    # whole point is to close on it.
+    for key in bread_keys:
+        other_planner.add_scene_object_obstacle(key, BREAD_EXTENTS_M)
+    other_planner.set_obstacle_enabled(target, False)
     other_executor = ArmExecutor(env, other_planner, on_step=grab_frame)
 
     slice_pos, slice_rot = _object_pose_for_report(target)
@@ -1082,27 +1090,32 @@ if args.insert and handover_ok:
         in_x = x_range[0] <= local[0] <= x_range[1]
         in_y = y_range[0] <= local[1] <= y_range[1]
         height = local[2] - SLOT_Z_LOCAL_M
-        in_z = 0.030 <= height <= 0.065
+        # The same band the task's slot predicate tests, read from the task instead of restated.
+        task = arena_env.task
+        in_z = task.slot_z_lower_m <= height <= task.slot_z_upper_m
         insert_ok = bool(in_x and in_y and in_z)
         print(f"  slice in the toaster's frame: {np.round(local, 4)}, {height * 1000:.1f} mm above the slot floor")
-        print(f"  inside the slot footprint: x {in_x}, y {in_y}; height in the 30-65 mm band: {in_z}")
+        print(
+            f"  inside the slot footprint: x {in_x}, y {in_y}; height in the"
+            f" {task.slot_z_lower_m * 1000:.0f}-{task.slot_z_upper_m * 1000:.0f} mm band: {in_z}"
+        )
 
 
 print("\n=== outcome ===")
-rise_mm = (object_position(target)[2] - start_z) * 1000.0
 if pick.success:
-    print(f"  picked {target} with '{pick.label}'; it rose {rise_mm:.1f} mm")
-    held_offset = planner.tool_position() - object_position(target)
-    print(f"  held {np.linalg.norm(held_offset) * 1000:.1f} mm from the slice's centre")
+    print(f"  picked {target} with '{pick.label}'; it rose {pick_rise_mm:.1f} mm")
+    print(f"  held {pick_held_mm:.1f} mm from the slice's centre at the pick")
 else:
     print(f"  failed to pick {target}: {pick.failure}")
-    print(f"  the slice moved {rise_mm:+.1f} mm in z")
+    print(f"  the slice moved {pick_rise_mm:+.1f} mm in z")
 for key in bread_keys:
     print(f"  {key} now at {np.round(object_position(key), 4)} (was {np.round(positions[key], 4)})")
 if carry_ok is not None:
     print(f"  carry: {'held flat at the staging pose' if carry_ok else 'FAILED'}")
 if handover_ok is not None:
     print(f"  handover: {'the other arm has it' if handover_ok else 'FAILED'}")
+if insert_ok is not None:
+    print(f"  insert: {'the slice stands in the slot' if insert_ok else 'FAILED'}")
 
 if args.pose_trace is not None and pose_trace:
     trace_path = pathlib.Path(args.pose_trace)

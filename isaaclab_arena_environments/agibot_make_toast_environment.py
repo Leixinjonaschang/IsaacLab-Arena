@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -82,6 +83,31 @@ class AgibotMakeToastEnvironmentCfg(ArenaEnvironmentCfg):
     num_breads: int = 4
     """How many slices to put in the rack. RoboDojo's make_toast uses four."""
 
+    shelf_jitter_x_min_m: float = 0.0
+    shelf_jitter_x_max_m: float = 0.0
+    """Per-reset random x offset applied to the rack *and* its slices, as an explicit (min, max)
+    pair so the range may be asymmetric: the rack's nominal x sits mid-way through the arm's
+    reach band, and offsetting outward past the band's edge only produces unreachable resets.
+    (Two scalars, not a tuple: the environment CLI cannot express tuple fields.)
+
+    The rack moves as one piece: the slices are carried along rigidly (translated and rotated
+    about the rack's origin), never jittered individually -- a slice offset on its own steps
+    across the 25 mm slot spacing and settles against a neighbour instead of into its groove."""
+
+    shelf_jitter_y_m: float = 0.0
+    """Half-extent of the per-reset random y offset applied to the rack and its slices."""
+
+    shelf_jitter_yaw_rad: float = 0.0
+    """Half-extent of the per-reset random yaw applied to the rack and its slices, about the
+    rack's origin."""
+
+    toaster_jitter_xy_m: float = 0.0
+    """Half-extent of the per-reset random offset applied to the toaster on both world axes; its
+    yaw stays fixed.
+
+    Keep it inside the slots' reachability plateau (x 0.28-0.40, measured by
+    probe_make_toast_reach) or the insertion loses its target."""
+
     head_view: bool = True
     """Put the viewport on the robot's head, so teleop is driven from the robot's own view."""
 
@@ -91,6 +117,69 @@ class AgibotMakeToastEnvironmentCfg(ArenaEnvironmentCfg):
     arm_effort_limit: float | None = 300.0
     """Torque ceiling for both arms, in N m. None keeps the shipped 1000-2000. See
     agibot_stack_bowls_environment for the measurements behind this value."""
+
+
+def _jitter_rack_group(
+    env,
+    env_ids,
+    asset_names: list[str],
+    nominal_poses: list[tuple[tuple[float, float, float], tuple[float, float, float, float]]],
+    anchor_xy: tuple[float, float],
+    x_range_m: tuple[float, float],
+    y_half_m: float,
+    yaw_half_rad: float,
+) -> None:
+    """Reset event: move a group of assets rigidly by one sampled planar offset and yaw.
+
+    One (dx, dy, dyaw) is drawn per reset and applied to every named asset about ``anchor_xy``,
+    so the rack and the slices standing in it keep their relative arrangement exactly. Runs after
+    the assets' own reset events, whose nominal poses it starts from.
+
+    Args:
+        env: The environment.
+        env_ids: Environments being reset.
+        asset_names: Scene keys to move together, e.g. the rack and its slices.
+        nominal_poses: Each asset's nominal (position_xyz, rotation_xyzw), in asset order.
+        anchor_xy: World xy point the yaw rotates about, normally the rack's origin.
+        x_range_m: (min, max) of the uniform x offset; asymmetric ranges keep the group inside
+            a reach band its nominal position does not sit in the middle of.
+        y_half_m: Half-extent of the uniform y offset.
+        yaw_half_rad: Half-extent of the uniform yaw.
+    """
+    import torch
+
+    import isaaclab.utils.math as math_utils
+
+    for cur_env in env_ids.tolist():
+        offset_x = x_range_m[0] + float(torch.rand(1)) * (x_range_m[1] - x_range_m[0])
+        offset_y = (float(torch.rand(1)) * 2.0 - 1.0) * y_half_m
+        offset = torch.tensor([offset_x, offset_y])
+        yaw = float((torch.rand(1) * 2.0 - 1.0) * yaw_half_rad)
+        spin = torch.tensor([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        yaw_quat = math_utils.quat_from_euler_xyz(torch.tensor([0.0]), torch.tensor([0.0]), torch.tensor([yaw])).to(
+            env.device
+        )
+        anchor = torch.tensor(anchor_xy)
+        for name, (position_xyz, rotation_xyzw) in zip(asset_names, nominal_poses):
+            position = torch.tensor(position_xyz)
+            position[:2] = anchor + spin @ (position[:2] - anchor) + offset
+            rotation = math_utils.quat_mul(
+                yaw_quat, torch.tensor([list(rotation_xyzw)], device=env.device, dtype=torch.float32)
+            )
+            root_pose = torch.cat(
+                [position.to(env.device).unsqueeze(0) + env.scene.env_origins[cur_env : cur_env + 1], rotation],
+                dim=-1,
+            ).float()
+            asset = env.scene[name]
+            asset.write_root_pose_to_sim_index(root_pose=root_pose, env_ids=torch.tensor([cur_env], device=env.device))
+            # The kinematic rack and the fixed-base toaster reject velocity writes.
+            from isaaclab_arena.terms.events import _velocity_is_writable
+
+            if _velocity_is_writable(asset):
+                asset.write_root_velocity_to_sim_index(
+                    root_velocity=torch.zeros(1, 6, device=env.device),
+                    env_ids=torch.tensor([cur_env], device=env.device),
+                )
 
 
 def _apply_arm_effort_limit(env_cfg, effort_limit: float | None) -> None:
@@ -144,11 +233,12 @@ class AgibotMakeToastEnvironment(ArenaEnvironmentFactory[AgibotMakeToastEnvironm
 
         toaster_asset = self.asset_registry.get_asset_by_name("toaster")
         toaster = toaster_asset()
+        toaster_z = _TABLE_TOP_Z + toaster_asset.HALF_HEIGHT_M
+        # The toaster's own jitter is applied by the same event as the rack group's (below),
+        # not by a PoseRange: the generic pose randomizer also writes a root velocity, which
+        # PhysX rejects on a fixed-base articulation.
         toaster.set_initial_pose(
-            Pose(
-                position_xyz=(*_TOASTER_POSITION_XY, _TABLE_TOP_Z + toaster_asset.HALF_HEIGHT_M),
-                rotation_xyzw=_TOASTER_ROTATION_XYZW,
-            )
+            Pose(position_xyz=(*_TOASTER_POSITION_XY, toaster_z), rotation_xyzw=_TOASTER_ROTATION_XYZW)
         )
 
         shelf_asset = self.asset_registry.get_asset_by_name("bread_shelf")
@@ -209,10 +299,60 @@ class AgibotMakeToastEnvironment(ArenaEnvironmentFactory[AgibotMakeToastEnvironm
 
         scene = Scene(assets=[background, toaster, bread_shelf, *breads, surroundings, light])
 
+        # The rack and its slices are jittered as one rigid group, so the nominal poses the event
+        # transforms are captured here, where they are laid out.
+        rack_group_names = [bread_shelf.name, *(bread.name for bread in breads)]
+        rack_group_poses = [
+            ((*_SHELF_POSITION_XY, shelf_origin_z), _SHELF_ROTATION_XYZW),
+            *(
+                (
+                    (
+                        _SHELF_POSITION_XY[0],
+                        _SHELF_POSITION_XY[1] + shelf_asset.SLOT_X_M[index],
+                        shelf_origin_z + shelf_asset.SLOT_Z_M,
+                    ),
+                    _BREAD_ROTATION_XYZW,
+                )
+                for index in range(cfg.num_breads)
+            ),
+        ]
+
         def env_cfg_callback(env_cfg):
-            """Swap the arm terms for ones that hold their target while idle, and cap arm torque."""
+            """Swap the arm terms for ones that hold their target while idle, cap arm torque, and
+            attach the rack-group jitter after every asset's own reset event."""
             install_arm_target_hold(env_cfg)
             _apply_arm_effort_limit(env_cfg, cfg.arm_effort_limit)
+            shelf_jittered = cfg.shelf_jitter_x_min_m or cfg.shelf_jitter_x_max_m or cfg.shelf_jitter_y_m
+            if shelf_jittered or cfg.shelf_jitter_yaw_rad:
+                from isaaclab.managers import EventTermCfg
+
+                env_cfg.events.jitter_rack_group = EventTermCfg(
+                    func=_jitter_rack_group,
+                    mode="reset",
+                    params={
+                        "asset_names": rack_group_names,
+                        "nominal_poses": rack_group_poses,
+                        "anchor_xy": _SHELF_POSITION_XY,
+                        "x_range_m": (cfg.shelf_jitter_x_min_m, cfg.shelf_jitter_x_max_m),
+                        "y_half_m": cfg.shelf_jitter_y_m,
+                        "yaw_half_rad": cfg.shelf_jitter_yaw_rad,
+                    },
+                )
+            if cfg.toaster_jitter_xy_m:
+                from isaaclab.managers import EventTermCfg
+
+                env_cfg.events.jitter_toaster = EventTermCfg(
+                    func=_jitter_rack_group,
+                    mode="reset",
+                    params={
+                        "asset_names": [toaster.name],
+                        "nominal_poses": [((*_TOASTER_POSITION_XY, toaster_z), _TOASTER_ROTATION_XYZW)],
+                        "anchor_xy": _TOASTER_POSITION_XY,
+                        "x_range_m": (-cfg.toaster_jitter_xy_m, cfg.toaster_jitter_xy_m),
+                        "y_half_m": cfg.toaster_jitter_xy_m,
+                        "yaw_half_rad": 0.0,
+                    },
+                )
             return env_cfg
 
         return IsaacLabArenaEnvironment(

@@ -12,6 +12,7 @@ from isaaclab_arena.tasks import (  # noqa: F401
     assembly_task,
     close_door_task,
     goal_pose_task,
+    handover_toast_task,
     lift_object_task,
     make_toast_task,
     no_task,

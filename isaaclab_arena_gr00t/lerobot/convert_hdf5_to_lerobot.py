@@ -290,8 +290,15 @@ def write_video_job(queue: mp.Queue, error_queue: mp.Queue, config: Gr00tDataset
                     frames = resize_frames_with_padding(
                         frames, target_image_size=config.target_image_size, bgr_conversion=False, pad_img=True
                     )
-                # h264 codec encoding
-                torchvision.io.write_video(video_path, frames, fps, video_codec="h264")
+                # h264 codec encoding. torchvision removed its video API (write_video is gone
+                # from 0.22 on), so fall back to imageio-ffmpeg, which writes the same
+                # h264/yuv420p mp4 the LeRobot loaders expect.
+                if hasattr(torchvision.io, "write_video"):
+                    torchvision.io.write_video(video_path, frames, fps, video_codec="h264")
+                else:
+                    import imageio.v3 as iio
+
+                    iio.imwrite(video_path, np.asarray(frames, dtype=np.uint8), fps=fps, codec="libx264")
 
         except Exception as e:
             # Get the traceback and put in error queue

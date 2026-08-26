@@ -341,6 +341,47 @@ def objects_upright_about_any_axis(
     return select(result, env_id)
 
 
+def any_object_near_body(
+    env: ManagerBasedRLEnv,
+    object_names: list[str],
+    body_name: str,
+    max_distance_m: float,
+    min_height_m: float | None = None,
+    articulation_name: str = "robot",
+    env_id: int | None = None,
+) -> torch.Tensor:
+    """Checks that at least one of the named objects sits within reach of a robot body.
+
+    Distance is measured between the object's origin and the body's origin, so the threshold has
+    to allow for both the tool frame's offset from the contact and the object's own size. With
+    ``min_height_m`` set, an object only counts while its origin is above that world height --
+    which separates one held at the gripper from one lying wherever the gripper happens to be.
+
+    Args:
+        env: The environment.
+        object_names: Candidate objects; only one has to be near.
+        body_name: Body of the articulation to measure from, e.g. a gripper's tool frame.
+        max_distance_m: How far the object's origin may sit from the body's, in metres.
+        min_height_m: World height the object's origin must also clear, or None for no floor.
+        articulation_name: Scene key of the articulation carrying the body.
+        env_id: Restrict the result to a single environment, or None for all of them.
+
+    Returns:
+        True when some object in object_names is within max_distance_m of the body.
+    """
+    articulation = get_env(env).scene.articulations[articulation_name]
+    body_index = list(articulation.data.body_names).index(body_name)
+    body_pos = wp.to_torch(articulation.data.body_pos_w)[:, body_index]
+    near = []
+    for name in object_names:
+        position = get_root_pos_w(env, name)
+        ok = torch.linalg.vector_norm(position - body_pos, dim=-1) <= max_distance_m
+        if min_height_m is not None:
+            ok &= position[:, 2] > min_height_m
+        near.append(ok)
+    return select(torch.stack(near, dim=-1).any(dim=-1), env_id)
+
+
 def _objects_in_frame_box(
     env: ManagerBasedRLEnv,
     object_names: list[str],

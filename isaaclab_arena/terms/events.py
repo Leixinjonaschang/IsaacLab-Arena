@@ -13,6 +13,19 @@ from isaaclab_arena.utils.pose import Pose
 from isaaclab_arena.utils.velocity import Velocity
 
 
+def _velocity_is_writable(asset) -> bool:
+    """Whether an asset's root accepts velocity writes.
+
+    PhysX rejects velocities on kinematic rigid bodies and fixed-base articulation roots. The GPU
+    tensor pipeline swallows the write silently, but on the CPU device every such write logs a
+    ``Body must be non-kinematic!`` error -- one pair per asset per reset.
+    """
+    if getattr(asset, "is_fixed_base", False):
+        return False
+    rigid_props = getattr(getattr(asset.cfg, "spawn", None), "rigid_props", None)
+    return not getattr(rigid_props, "kinematic_enabled", False)
+
+
 def set_object_pose(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
@@ -33,7 +46,7 @@ def set_object_pose(
     if velocity is not None:
         vel = velocity.to_tensor(device=env.device).unsqueeze(0).expand(num_envs, -1)
         asset.write_root_velocity_to_sim(vel, env_ids=env_ids)
-    else:
+    elif _velocity_is_writable(asset):
         asset.write_root_velocity_to_sim(torch.zeros(num_envs, 6, device=env.device), env_ids=env_ids)
 
 

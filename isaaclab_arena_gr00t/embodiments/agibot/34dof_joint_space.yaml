@@ -1,0 +1,44 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Agibot A2D joint configuration for the recorded STATE space: the articulation's own joint
+# order, exactly as ``obs/joint_pos`` stores it (34 dof). Read off the built environment's
+# ``robot.data.joint_names`` -- Isaac Lab orders joints breadth-first over the USD, so left/right
+# arm joints interleave rather than sitting in two blocks.
+joints:
+  "joint_lift_body": 0
+  "joint_body_pitch": 1
+  "joint_head_yaw": 2
+  "joint_head_pitch": 3
+  "left_arm_joint1": 4
+  "right_arm_joint1": 5
+  "left_arm_joint2": 6
+  "right_arm_joint2": 7
+  "left_arm_joint3": 8
+  "right_arm_joint3": 9
+  "left_arm_joint4": 10
+  "right_arm_joint4": 11
+  "left_arm_joint5": 12
+  "right_arm_joint5": 13
+  "left_arm_joint6": 14
+  "right_arm_joint6": 15
+  "left_arm_joint7": 16
+  "right_arm_joint7": 17
+  "left_Right_1_Joint": 18
+  "left_hand_joint1": 19
+  "right_Right_1_Joint": 20
+  "right_hand_joint1": 21
+  "left_Right_0_Joint": 22
+  "left_Left_0_Joint": 23
+  "right_Right_0_Joint": 24
+  "right_Left_0_Joint": 25
+  "left_Right_Support_Joint": 26
+  "left_Left_Support_Joint": 27
+  "right_Right_Support_Joint": 28
+  "right_Left_Support_Joint": 29
+  "left_Right_RevoluteJoint": 30
+  "left_Left_RevoluteJoint": 31
+  "right_Right_RevoluteJoint": 32
+  "right_Left_RevoluteJoint": 33

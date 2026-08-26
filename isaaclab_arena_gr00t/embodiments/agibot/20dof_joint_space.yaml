@@ -1,0 +1,29 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Agibot A2D joint configuration for the recorded ACTION space: the 20-dim absolute joint-target
+# vector ``AgibotDualArmJointActionsCfg`` lays out -- left arm (7), left gripper (3), right arm
+# (7), right gripper (3), each term in its own resolved joint order.
+joints:
+  "left_arm_joint1": 0
+  "left_arm_joint2": 1
+  "left_arm_joint3": 2
+  "left_arm_joint4": 3
+  "left_arm_joint5": 4
+  "left_arm_joint6": 5
+  "left_arm_joint7": 6
+  "left_hand_joint1": 7
+  "left_Right_Support_Joint": 8
+  "left_Left_Support_Joint": 9
+  "right_arm_joint1": 10
+  "right_arm_joint2": 11
+  "right_arm_joint3": 12
+  "right_arm_joint4": 13
+  "right_arm_joint5": 14
+  "right_arm_joint6": 15
+  "right_arm_joint7": 16
+  "right_hand_joint1": 17
+  "right_Right_Support_Joint": 18
+  "right_Left_Support_Joint": 19
