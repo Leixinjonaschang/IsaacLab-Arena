@@ -139,8 +139,9 @@ RETREAT_SPEED = 0.12
 recording = args.record_dir is not None
 arena_args = get_isaaclab_arena_cli_parser().parse_args(["--num_envs", "1", "--enable_cameras"])
 factory = EnvironmentRegistry().get_component_by_name(args.env)()
-# The embodiment's own cameras only matter when their observations are being recorded.
-arena_env = factory.build(factory._legacy_argparse_cfg_type(teleop_device=None, enable_cameras=recording))
+# Cameras stay off even when recording: the raw HDF5 carries actions and per-step sim states
+# only, and every image stream is re-rendered offline from those states (rerender_demo_cameras.py).
+arena_env = factory.build(factory._legacy_argparse_cfg_type(teleop_device=None, enable_cameras=False))
 embodiment_type = type(arena_env.embodiment)
 
 if recording:
@@ -168,6 +169,8 @@ if recording:
         """
         patched = _prev_cb(patched) if _prev_cb is not None else patched
         patched.recorders = ArenaEnvRecorderManagerCfg()
+        # Cameras are off in states-only recording; the camera-obs recorder term would KeyError.
+        patched.recorders.record_pre_step_flat_camera_observations = None
         patched.recorders.dataset_export_dir_path = args.record_dir
         patched.recorders.dataset_filename = args.dataset_name
         patched.recorders.dataset_export_mode = DatasetExportMode.EXPORT_SUCCEEDED_ONLY

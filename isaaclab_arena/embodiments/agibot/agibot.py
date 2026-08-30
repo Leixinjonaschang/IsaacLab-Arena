@@ -88,13 +88,15 @@ AGIBOT_RIGHT_ARM_ARENA_RMPFLOW_CFG.collision_file = os.path.join(_RMPFLOW_DIR, "
 
 @configclass
 class AgibotCameraCfg(ArenaCameraCfg):
-    """Camera rig for the Agibot: the head view, as a recordable sensor.
+    """Camera rig for the Agibot: a true-ego head view, as a recordable sensor.
 
-    Reproduces ``get_head_viewer_cfg``'s framing -- same eye, gaze and field of view -- so
-    recorded observations match what a teleoperator saw in the viewport. Mounted under
-    ``base_link`` rather than the head link because the viewer offsets are world-axis values
-    (see ``HEAD_VIEW_EYE``); the head holds its default pose through the reset event, so the
-    two mounts see the same thing, and the base frame is the one the offsets are stated in.
+    Unlike the earlier teleop-viewport reproduction (eye 0.42 m above the head, whose square
+    crop showed the robot's own head shell at the bottom of every frame), the eye sits just in
+    front of the head at head height, so the robot never appears in its own view. The viewport's
+    +/-30 deg field-of-view limit does not bind a sensor camera, so a shorter focal length
+    keeps both grippers in frame without the overhead standoff. Mounted under ``base_link``
+    because the offsets are stated in the base frame; the head holds its default pose through
+    the reset event.
     """
 
     head_cam: CameraCfg = CameraCfg(
@@ -103,16 +105,115 @@ class AgibotCameraCfg(ArenaCameraCfg):
         height=512,
         width=512,
         data_types=["rgb"],
-        # The Kit viewport's field of view, matching the teleop view and the demo recordings.
-        spawn=sim_utils.PinholeCameraCfg(focal_length=18.147, horizontal_aperture=20.955, clipping_range=(0.05, 30.0)),
+        spawn=sim_utils.PinholeCameraCfg(focal_length=12.0, horizontal_aperture=20.955, clipping_range=(0.05, 30.0)),
         offset=CameraCfg.OffsetCfg(
-            # HEAD_VIEW_EYE above the measured head position (-0.157, 0, 1.263), in base frame.
-            pos=(0.443, 0.0, 1.683),
-            # Looking along HEAD_VIEW_LOOKAT - HEAD_VIEW_EYE = (0.66, 0, -1.05), no roll.
-            rot=(0.19581, -0.19581, -0.67946, 0.67946),
+            # Just in front of the head (measured at (0.427, 0, 1.275) in base frame), gazing at
+            # the same table-top workspace point as the old rig, (1.103, 0, 0.633).
+            pos=(0.56, 0.0, 1.30),
+            # Looking along (0.6313, 0, -0.7755), no roll. NOTE: this field is xyzw.
+            rot=(0.2369, -0.2369, -0.66624, 0.66624),
             convention="opengl",
         ),
     )
+
+    # The D405 wrist cameras. Deliberately NOT parented under the wrist links: a camera prim
+    # under a moving link does not track it (the sensor FrameView falls back to the USD-authored
+    # transform for runtime prims). They spawn as ordinary world-anchored sensors, and the
+    # observation term re-poses them from the live tool poses before every capture -- see
+    # AgibotEmbodiment.get_observation_cfg and wrist_camera_rgb.
+    left_wrist_cam: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/LeftWristCam",
+        update_period=0.0,
+        height=512,
+        width=512,
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(focal_length=12.0, horizontal_aperture=20.955, clipping_range=(0.02, 30.0)),
+    )
+    right_wrist_cam: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/RightWristCam",
+        update_period=0.0,
+        height=512,
+        width=512,
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(focal_length=12.0, horizontal_aperture=20.955, clipping_range=(0.02, 30.0)),
+    )
+
+
+WRIST_CAM_MOUNTS = {
+    "left": ("gripper_center", (0.0949, 0.0004, -0.1528)),
+    "right": ("right_gripper_center", (0.0949, -0.0008, -0.1527)),
+}
+"""D405 wrist-camera housing centres: tool body name, and the housing offset in that body's frame.
+
+Measured from the D405 housing meshes the A2D USD ships (there is no camera prim): the rendered
+housing pose is the base link's physics pose composed with the mesh's USD-local offset, verified
+by a marker sphere landing inside the housing. NOT a config-class camera on purpose: a camera
+prim parented under a moving link does not track it (the sensor's FrameView falls back to the
+USD-authored transform for runtime prims, which physics never updates), so wrist cameras must be
+world-posed every frame from the live tool pose instead -- see
+``isaaclab_arena_cumotion/scripts/rerender_demo_cameras.py`` for the composition."""
+
+WRIST_CAM_VIEW_NUDGE_M = 0.03
+"""How far to push the wrist camera eye along its view, so it renders from outside the housing
+shell rather than the (black) inside of it."""
+
+
+def _wrist_camera_poses(env) -> dict[str, tuple]:
+    """The wrist cameras' world poses, batched over envs, from the live tool poses.
+
+    View = tool +z (out along the gripper), eye at the D405 housing pushed clear of its shell,
+    roll = world-up projected perpendicular to the view (tool -x fallback near vertical) -- the
+    same composition the offline re-render uses, so live captures match the dataset streams.
+    """
+    import torch
+
+    import isaaclab.utils.math as math_utils
+
+    robot = env.scene["robot"]
+    device = env.device
+    poses = {}
+    for side, (tool, offset) in WRIST_CAM_MOUNTS.items():
+        index = robot.data.body_names.index(tool)
+        tool_pos = robot.data.body_pos_w[:, index]
+        tool_rot = math_utils.matrix_from_quat(robot.data.body_quat_w[:, index])
+        view = tool_rot[:, :, 2]
+        offset_t = torch.tensor(offset, dtype=torch.float32, device=device)
+        eye = tool_pos + (tool_rot @ offset_t.unsqueeze(-1)).squeeze(-1) + WRIST_CAM_VIEW_NUDGE_M * view
+        z_cam = -view
+        up = torch.zeros_like(z_cam)
+        up[:, 2] = 1.0
+        up = up - (up * z_cam).sum(-1, keepdim=True) * z_cam
+        fallback = -tool_rot[:, :, 0]
+        fallback = fallback - (fallback * z_cam).sum(-1, keepdim=True) * z_cam
+        degenerate = torch.linalg.norm(up, dim=-1, keepdim=True) < 0.1
+        up = torch.where(degenerate, fallback, up)
+        up = up / torch.linalg.norm(up, dim=-1, keepdim=True)
+        x_cam = torch.linalg.cross(up, z_cam)
+        x_cam = x_cam / torch.linalg.norm(x_cam, dim=-1, keepdim=True)
+        y_cam = torch.linalg.cross(z_cam, x_cam)
+        quat = math_utils.quat_from_matrix(torch.stack([x_cam, y_cam, z_cam], dim=-1))
+        poses[side] = (eye, quat)
+    return poses
+
+
+def _refresh_wrist_cameras(env) -> None:
+    """Re-pose both wrist camera sensors and re-render, at most once per step."""
+    if getattr(env, "_agibot_wrist_cam_stamp", None) == env.common_step_counter:
+        return
+    env._agibot_wrist_cam_stamp = env.common_step_counter
+    for side, (eye, quat) in _wrist_camera_poses(env).items():
+        env.scene[f"{side}_wrist_cam"].set_world_poses(eye, quat, convention="opengl")
+    # The step's own render ran before the sensors were posed; render again so the captures are
+    # taken from this step's poses, exactly like the offline re-render.
+    env.sim.render()
+    for side in WRIST_CAM_MOUNTS:
+        env.scene[f"{side}_wrist_cam"].update(env.sim.get_physics_dt(), force_recompute=True)
+
+
+def wrist_camera_rgb(env, side: str):
+    """Observation term: the ``side`` wrist camera's rgb image, tracked onto the live wrist."""
+    _refresh_wrist_cameras(env)
+    return env.scene[f"{side}_wrist_cam"].data.output["rgb"][..., :3]
 
 
 @register_asset
@@ -162,6 +263,21 @@ class AgibotEmbodiment(EmbodimentBase):
         self.event_config = AgibotEventCfg()
         self.camera_config = AgibotCameraCfg()
         self.mimic_env = AgibotMimicEnv
+
+    def get_observation_cfg(self):
+        """The base camera observation group, with the wrist terms swapped for tracking captures.
+
+        The auto-generated terms read each sensor wherever it happens to be; the wrist cameras
+        are world-anchored (a prim under a moving link does not track it) and must be re-posed
+        onto the live wrists and re-rendered before every capture.
+        """
+        observation_cfg = super().get_observation_cfg()
+        if self.enable_cameras and self.camera_config is not None:
+            for side in WRIST_CAM_MOUNTS:
+                term = getattr(observation_cfg.camera_obs, f"{side}_wrist_cam_rgb")
+                term.func = wrist_camera_rgb
+                term.params = {"side": side}
+        return observation_cfg
 
     def get_head_viewer_cfg(self, lookat: tuple[float, float, float] | None = None) -> ViewerCfg:
         """Return a viewer config mounted on the head, giving a first-person view.

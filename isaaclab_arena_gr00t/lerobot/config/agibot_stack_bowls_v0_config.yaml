@@ -21,6 +21,12 @@ hdf5_name: "stack_bowls.hdf5"
 state_name_sim: "joint_pos"
 action_name_sim: "processed_actions"
 pov_cam_name_sim: "head_cam_rgb"
+# Videos come from the re-rendered sidecar mp4s next to the HDF5 (<hdf5>.cameras/), written by
+# isaaclab_arena_cumotion/scripts/rerender_demo_cameras.py; the HDF5 needs no image data.
+sidecar_camera_streams:
+  head_cam_rgb: "observation.images.ego_view"
+  left_wrist_cam_rgb: "observation.images.left_wrist_view"
+  right_wrist_cam_rgb: "observation.images.right_wrist_view"
 
 # Gr00t-LeRobot datafield names
 state_name_lerobot: "observation.state"

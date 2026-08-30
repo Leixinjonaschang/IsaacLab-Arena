@@ -42,6 +42,12 @@
     "video": {
         "ego_view": {
             "original_key": "observation.images.ego_view"
+        },
+        "left_wrist_view": {
+            "original_key": "observation.images.left_wrist_view"
+        },
+        "right_wrist_view": {
+            "original_key": "observation.images.right_wrist_view"
         }
     },
     "annotation": {

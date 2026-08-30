@@ -52,6 +52,27 @@ class Gr00tDatasetConfig:
     pov_cam_name_sim: str = field(
         default="robot_head_cam", metadata={"description": "Name of the POV camera in the HDF5 file."}
     )
+    sidecar_camera_streams: dict | None = field(
+        default=None,
+        metadata={
+            "description": (
+                "Mapping of re-rendered camera stream names to LeRobot video keys, e.g."
+                " {head_cam_rgb: observation.images.ego_view}. When set, episode videos are taken"
+                " from per-demo sidecar mp4s (<sidecar_camera_dir>/<demo>_<stream>.mp4, as written"
+                " by isaaclab_arena_cumotion/scripts/rerender_demo_cameras.py) instead of a"
+                " camera_obs image stream in the HDF5 -- which then does not need to carry images"
+                " at all. NOTE: a sidecar mp4 has one trailing frame more than the episode length"
+                " (the legacy path drops the final observation); harmless, the loader never"
+                " indexes past length - 1."
+            )
+        },
+    )
+    sidecar_camera_dir: Path | None = field(
+        default=None,
+        metadata={
+            "description": ("Directory holding the sidecar camera mp4s. Defaults to '<hdf5_file_path>.cameras'.")
+        },
+    )
     # Gr00t-LeRobot datafield
     state_name_lerobot: str = field(
         default="observation.state", metadata={"description": "Name of the state in the LeRobot file."}
@@ -145,6 +166,12 @@ class Gr00tDatasetConfig:
         self.lerobot_data_dir = self.data_root / self.hdf5_name.replace(".hdf5", "") / "lerobot"
 
         assert self.hdf5_file_path.exists(), f"{self.hdf5_file_path} does not exist"
+        if self.sidecar_camera_streams:
+            if self.sidecar_camera_dir is None:
+                self.sidecar_camera_dir = Path(f"{self.hdf5_file_path}.cameras")
+            else:
+                self.sidecar_camera_dir = Path(self.sidecar_camera_dir)
+            assert self.sidecar_camera_dir.is_dir(), f"{self.sidecar_camera_dir} does not exist"
         assert Path(self.policy_joints_config_path).exists(), f"{self.policy_joints_config_path} does not exist"
         assert Path(self.action_joints_config_path).exists(), f"{self.action_joints_config_path} does not exist"
         assert Path(self.state_joints_config_path).exists(), f"{self.state_joints_config_path} does not exist"

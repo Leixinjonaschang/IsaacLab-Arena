@@ -89,9 +89,10 @@ parser.add_argument(
     type=str,
     default=None,
     help=(
-        "Directory to write the HDF5 demonstration dataset into. Enables the embodiment's cameras"
-        " and drives the arms through env.step with joint-space actions, so the recorded episodes"
-        " carry actions, robot state and camera observations."
+        "Directory to write the HDF5 demonstration dataset into. Drives the arms through env.step"
+        " with joint-space actions, so the recorded episodes carry actions and full per-step sim"
+        " state. Images are NOT recorded: they are re-rendered offline from the states"
+        " (rerender_demo_cameras.py), which keeps the raw HDF5 small and camera changes free."
     ),
 )
 parser.add_argument("--dataset-name", type=str, default="stack_bowls", help="HDF5 file name, without extension.")
@@ -167,10 +168,12 @@ TABLE_OBSTACLE = "/obstacles/table"
 recording = args.record_dir is not None
 arena_args = get_isaaclab_arena_cli_parser().parse_args(["--num_envs", "1", "--enable_cameras"])
 factory = EnvironmentRegistry().get_component_by_name(args.env)()
+# Cameras stay off even when recording: the raw HDF5 carries actions and per-step sim states
+# only, and every image stream is re-rendered offline from those states.
 env_cfg = factory._legacy_argparse_cfg_type(
     teleop_device=None,
     bowl_jitter_xy_m=args.jitter,
-    enable_cameras=recording,
+    enable_cameras=False,
     **({"arm_effort_limit": None} if args.stock_arm_effort else {}),
 )
 arena_env = factory.build(env_cfg)
@@ -188,6 +191,8 @@ if recording:
         """Attach the demo recorder; success is judged and exported by this script instead."""
         patched = _prev_cb(patched) if _prev_cb is not None else patched
         patched.recorders = ArenaEnvRecorderManagerCfg()
+        # Cameras are off in states-only recording; the camera-obs recorder term would KeyError.
+        patched.recorders.record_pre_step_flat_camera_observations = None
         patched.recorders.dataset_export_dir_path = args.record_dir
         patched.recorders.dataset_filename = args.dataset_name
         patched.recorders.dataset_export_mode = DatasetExportMode.EXPORT_SUCCEEDED_ONLY
