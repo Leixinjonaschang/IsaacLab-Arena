@@ -59,6 +59,10 @@ TAGS
 
 # outputs
 *outputs/
+/output/
+
+# Local native dependency bundles
+/.native-libs/
 
 # Training images
 *training_images/

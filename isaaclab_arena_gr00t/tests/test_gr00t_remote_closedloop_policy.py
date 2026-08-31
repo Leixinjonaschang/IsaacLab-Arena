@@ -90,8 +90,11 @@ class _FakePolicyClient:
     """Minimal stand-in for ``gr00t.policy.server_client.PolicyClient``."""
 
     def __init__(self, *args, ping_ok: bool = True, **kwargs):
+        from isaaclab_arena_gr00t.embodiments.g1.g1_sim_wbc_data_config import unitree_g1_sim_wbc_config
+
         self.init_kwargs = kwargs
         self._ping_ok = ping_ok
+        self.modality_configs = unitree_g1_sim_wbc_config
         self.last_observation: dict[str, Any] | None = None
         self.get_action_calls = 0
         self.reset_called = False
@@ -99,11 +102,15 @@ class _FakePolicyClient:
     def ping(self) -> bool:
         return self._ping_ok
 
+    def get_modality_config(self):
+        return self.modality_configs
+
     def get_action(self, observation: dict[str, Any]):
         self.last_observation = observation
         self.get_action_calls += 1
         # Match the real PolicyClient return signature: (action_dict, latency_or_meta).
-        return _make_action_response(NUM_ENVS, ACTION_HORIZON), None
+        action_horizon = len(self.modality_configs["action"].delta_indices)
+        return _make_action_response(NUM_ENVS, action_horizon), None
 
     def reset(self):
         self.reset_called = True
@@ -141,6 +148,17 @@ def _build_policy(policy_config_yaml: str, scheduler: str = "chunk"):
     return gr00t_policy.Gr00tRemoteClosedloopPolicy(cfg)
 
 
+def _request_chunk(policy, observation, camera_names, env=None):
+    """Feed one control step's frames to the policy, then ask it for an action chunk.
+
+    In production ``get_action`` records every step into the video history before deciding whether
+    to re-infer; these tests call the inference path directly, so they prime the history the same
+    way. ``env`` is only read for embodiments whose policy conditions on an end-effector pose.
+    """
+    policy._video_history.push(policy._resized_frames(observation, camera_names))
+    return policy._get_action_chunk(env, observation, camera_names)
+
+
 # ------------------------------- tests ------------------------------- #
 
 
@@ -153,7 +171,7 @@ def test_observation_sent_to_server_has_expected_structure(
     policy = _build_policy(policy_config_yaml)
     policy.set_task_description("pick up the brown box")
 
-    policy._get_action_chunk(synthetic_observation, ["robot_head_cam_rgb"])
+    _request_chunk(policy, synthetic_observation, ["robot_head_cam_rgb"])
 
     assert len(clients) == 1
     sent = clients[0].last_observation
@@ -189,7 +207,7 @@ def test_action_response_is_translated_to_correct_tensor_shape(
     policy = _build_policy(policy_config_yaml)
     policy.set_task_description("pick up the brown box")
 
-    action = policy._get_action_chunk(synthetic_observation, ["robot_head_cam_rgb"])
+    action = _request_chunk(policy, synthetic_observation, ["robot_head_cam_rgb"])
 
     assert isinstance(action, torch.Tensor)
     # _get_action_chunk asserts action_tensor.shape[1] >= action_chunk_length, but
