@@ -21,6 +21,6 @@ runs:
       policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/droid_manip_n17_gr00t_closedloop_config.yaml
       policy_device: cuda:0
       remote_host: 127.0.0.1
-      remote_port: 5555
+      remote_port: 5556
     rollout_limit:
       num_episodes: 3

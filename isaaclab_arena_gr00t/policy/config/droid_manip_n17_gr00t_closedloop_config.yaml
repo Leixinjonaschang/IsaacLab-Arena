@@ -22,10 +22,10 @@ action_joints_config_path: isaaclab_arena_gr00t/embodiments/droid/8dof_joint_spa
 state_joints_config_path: isaaclab_arena_gr00t/embodiments/droid/13dof_joint_space.yaml
 
 # Action chunk length is the number of actions executed per inference rollout, could be less than
-# the remote action horizon. GR00T's own DROID client replays 15 of them before asking again
-# (`open_loop_horizon` in examples/DROID/main_gr00t.py), i.e. one second at DROID's 15 Hz. Replaying
-# the full chunk instead would leave a relative-action model running open loop for over two seconds.
-action_chunk_length: 15
+# the remote action horizon. Match RoboLab's validated N1.7 DROID setting: replay eight actions
+# before querying the server again. Replaying the full chunk would leave a relative-action model
+# running open loop for over two seconds.
+action_chunk_length: 8
 task_mode_name: droid_manipulation
 
 pov_cam_name_sim: ["external_camera_rgb", "wrist_camera_rgb"]
