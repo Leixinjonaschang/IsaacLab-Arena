@@ -22,12 +22,29 @@ def get_isaac_sim_version() -> str:
 
 
 STARTUP_COMPLETE_MARKER = "[isaaclab-arena] AppLauncher initialization complete"
+LIVESTREAM_DYNAMIC_RESIZE_SETTING = "/exts/omni.kit.livestream.app/primaryStream/allowDynamicResize"
+
+
+def _configure_livestream_dynamic_resize(args: argparse.Namespace) -> None:
+    """Enable dynamic resizing by default for public livestreams."""
+    livestream = getattr(args, "livestream", -1)
+    if livestream == -1:
+        livestream = 1 if os.environ.get("LIVESTREAM") == "1" else 0
+    if livestream != 1:
+        return
+
+    kit_args = getattr(args, "kit_args", "") or ""
+    setting_arg = f"--{LIVESTREAM_DYNAMIC_RESIZE_SETTING}"
+    if any(arg == setting_arg or arg.startswith(f"{setting_arg}=") for arg in kit_args.split()):
+        return
+    args.kit_args = f"{kit_args} {setting_arg}=true".strip()
 
 
 def get_app_launcher(args: argparse.Namespace) -> AppLauncher:
     """Get an app launcher."""
     import time
 
+    _configure_livestream_dynamic_resize(args)
     t0 = time.monotonic()
     app_launcher = AppLauncher(args)
     elapsed = time.monotonic() - t0
