@@ -44,8 +44,10 @@ def _joint_name_to_policy_group(
             return "waist"
         return None
 
-    if tag == "OXE_DROID":
-        # DROID: policy groups are joint_position, gripper_position
+    if tag.startswith("OXE_DROID"):
+        # DROID: policy groups are joint_position and gripper_position, under both the GR00T N1.6
+        # tag (OXE_DROID) and the N1.7 one (OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT). N1.7's extra
+        # eef_9d state is a Cartesian pose, not a joint group, so it never reaches this mapping.
         for group, names in policy_joints_config.items():
             if joint_name in names:
                 return group

@@ -1,0 +1,26 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+runs:
+  droid_peg_insertion_gr00t_n17:
+    environment:
+      type: droid_peg_insertion
+      enable_cameras: true
+      embodiment: droid_abs_joint_pos
+      hdr: home_office_robolab
+    environment_builder:
+      language_instruction: Pick up the peg and insert it into the hole.
+    policy:
+      # GR00T N1.7, either the base checkpoint (nvidia/GR00T-N1.7-3B, DROID is a pretrain tag so it
+      # runs zero-shot) or the finetuned nvidia/GR00T-N1.7-DROID. The server converts the model's
+      # relative end-effector and joint actions back to absolute ones before replying, so this
+      # environment's absolute droid_abs_joint_pos action space consumes them directly.
+      type: isaaclab_arena_gr00t.policy.gr00t_remote_closedloop_policy.Gr00tRemoteClosedloopPolicy
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/droid_manip_n17_gr00t_closedloop_config.yaml
+      policy_device: cuda:0
+      remote_host: 127.0.0.1
+      remote_port: 5556
+    rollout_limit:
+      num_episodes: 3

@@ -3,6 +3,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# GR00T N1.6 only. The OXE_DROID tag was removed in GR00T N1.7, so this config requires a
+# submodules/Isaac-GR00T checkout on the n1.6 line. For the N1.7 checkpoints that the submodule is
+# pinned to today, use droid_manip_n17_gr00t_closedloop_config.yaml instead.
+
 # Action horizon is the number of actions predicted by the policy per inference rollout, defined in the modality_config_path.
 action_horizon: 32
 embodiment_tag: OXE_DROID

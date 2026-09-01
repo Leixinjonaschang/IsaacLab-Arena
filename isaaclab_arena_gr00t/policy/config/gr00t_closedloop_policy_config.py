@@ -105,12 +105,16 @@ class Gr00tClosedloopPolicyCfg:
         if isinstance(self.pov_cam_name_sim, str):
             self.pov_cam_name_sim = [self.pov_cam_name_sim]
 
-        # embodiment_tag
-        assert self.embodiment_tag in [
-            "GR1",
-            "NEW_EMBODIMENT",
-            "OXE_DROID",
-        ], "embodiment_tag must be one of the following: " + ", ".join(["GR1", "NEW_EMBODIMENT", "OXE_DROID"])
+        # embodiment_tag. Which tags exist depends on the checkpoint family the pinned
+        # submodules/Isaac-GR00T checkout targets, so the set is read from GR00T rather than
+        # duplicated here: N1.7 renamed the DROID tag and dropped GR1 altogether.
+        from gr00t.data.embodiment_tags import EmbodimentTag
+
+        available_tags = [tag.name for tag in EmbodimentTag]
+        assert self.embodiment_tag in available_tags, (
+            f"embodiment_tag '{self.embodiment_tag}' is not offered by the pinned GR00T checkout."
+            f" Available tags: {', '.join(sorted(available_tags))}"
+        )
         if self.task_mode_name == TaskMode.G1_LOCOMANIPULATION.value:
             assert (
                 self.embodiment_tag == "NEW_EMBODIMENT"
@@ -118,6 +122,13 @@ class Gr00tClosedloopPolicyCfg:
         elif self.task_mode_name == TaskMode.GR1_TABLETOP_MANIPULATION.value:
             assert self.embodiment_tag == "GR1", "embodiment_tag must be GR1 for GR1 tabletop manipulation"
         elif self.task_mode_name == TaskMode.DROID_MANIPULATION.value:
-            assert self.embodiment_tag == "OXE_DROID", "embodiment_tag must be OXE_DROID for DROID manipulation"
+            # GR00T N1.6 calls this embodiment OXE_DROID; N1.7 calls the same robot
+            # OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT. Both drive the same sim-side action space, so
+            # the task mode covers both and only the state/video contract differs.
+            assert self.embodiment_tag.startswith("OXE_DROID"), (
+                "embodiment_tag must be a DROID tag (OXE_DROID for GR00T N1.6,"
+                " OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT for N1.7) for DROID manipulation, got"
+                f" '{self.embodiment_tag}'"
+            )
         else:
-            raise ValueError(f"Invalid inference mode: {self.task_mode}")
+            raise ValueError(f"Invalid inference mode: {self.task_mode_name}")

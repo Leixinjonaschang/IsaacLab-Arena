@@ -34,7 +34,7 @@ from isaaclab_arena_g1.g1_whole_body_controller.wbc_policy.policy.policy_constan
     NUM_TORSO_ORIENTATION_RPY_CMD,
 )
 from isaaclab_arena_gr00t.policy.config.gr00t_closedloop_policy_config import Gr00tClosedloopPolicyCfg, TaskMode
-from isaaclab_arena_gr00t.utils.image_conversion import resize_frames_with_padding
+from isaaclab_arena_gr00t.utils.image_conversion import resize_frames_preserving_aspect
 from isaaclab_arena_gr00t.utils.io_utils import load_robot_joints_config_from_yaml, to_numpy, to_tensor
 from isaaclab_arena_gr00t.utils.joints_conversion import (
     remap_policy_joints_to_sim_joints_np,
@@ -159,6 +159,29 @@ def _extract_joints_from_nested_obs(
     return to_numpy(val) if convert_to_numpy else val
 
 
+def extract_eef_pose_from_nested_obs(
+    nested_obs: dict[str, Any],
+    group_key: str = "policy",
+    eef_pos_name: str = "eef_pos",
+    eef_quat_name: str = "eef_quat",
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Extract the end-effector pose from an observation, or None when the embodiment has none.
+
+    Args:
+        nested_obs: Env observation.
+        group_key: Top-level key under which the pose terms live (default "policy").
+        eef_pos_name: Key for the end-effector position (default "eef_pos").
+        eef_quat_name: Key for the end-effector orientation (default "eef_quat").
+
+    Returns:
+        Tuple of (N, 3) position and (N, 4) quaternion, or None if either term is absent.
+    """
+    group = nested_obs.get(group_key, {})
+    if eef_pos_name not in group or eef_quat_name not in group:
+        return None
+    return to_numpy(group[eef_pos_name]), to_numpy(group[eef_quat_name])
+
+
 def extract_obs_numpy_from_torch(
     nested_obs: dict[str, Any],
     camera_names: list[str],
@@ -214,11 +237,10 @@ def resize_rgb_for_policy(
     processed: list[np.ndarray] = []
     for rgb_np in rgb_list_np:
         if rgb_np.shape[1:3] != tuple(target_image_size[:2]):
-            rgb_np = resize_frames_with_padding(
+            rgb_np = resize_frames_preserving_aspect(
                 rgb_np,
                 target_image_size=target_image_size,
                 bgr_conversion=False,
-                pad_img=True,
             )
         processed.append(rgb_np)
     return processed
@@ -232,32 +254,36 @@ def build_gr00t_policy_observations(
     robot_state_joints_config: dict[str, Any],
     policy_joints_config: dict[str, Any],
     modality_configs: dict[str, Any],
+    extra_state_np: dict[str, np.ndarray] | None = None,
 ) -> dict[str, Any]:
     """Build GR00T policy observation dict from numpy env observations.
 
-    Resizes RGB, remaps sim joints to policy order, then fills language / video /
-    state keys from modality config. No torch; use after
-    :func:`extract_obs_numpy_from_torch`.
+    Remaps sim joints to policy order, then fills language / video / state keys from the modality
+    config. No torch; use after :func:`extract_obs_numpy_from_torch`.
 
     Args:
-        rgb_list_np: List of RGB arrays, one per camera; each shape (N, H, W, C).
+        rgb_list_np: List of RGB arrays, one per camera, each already resized to the policy's
+            target size and stacked over the video horizon: shape (N, T, H, W, C). T must match
+            the video modality config's ``delta_indices`` (see
+            :class:`~isaaclab_arena_gr00t.policy.video_history.VideoHistoryBuffer`).
         joint_pos_sim_np: Joint positions in sim order, shape (N, num_joints).
         task_description: Language instruction for the policy.
-        policy_config: Closed-loop config (target_image_size, etc.).
+        policy_config: Closed-loop config.
         robot_state_joints_config: State joint name->index for sim order.
         policy_joints_config: Policy group name->list of joint names.
         modality_configs: Dict with "language", "video", "state" modality configs.
+        extra_state_np: State entries that are not joint groups, keyed by modality state key and
+            shaped (N, D). Used for GR00T N1.7's ``eef_9d``, which is a Cartesian pose rather than
+            a set of joints. Takes precedence over the joint mapping.
 
     Returns:
         Nested dict "language" / "video" / "state" with keys from modality
-        config and arrays shaped for GR00T (e.g. video: N, 1, H, W, C).
+        config and arrays shaped for GR00T (video: N, T, H, W, C; state: N, 1, D).
     """
-    target_image_size = getattr(policy_config, "target_image_size", None)
-    if target_image_size is not None:
-        rgb_list_np = resize_rgb_for_policy(rgb_list_np=rgb_list_np, target_image_size=target_image_size)
     joint_pos_state_policy = remap_sim_joints_to_policy_joints_from_np(
         joint_pos_sim_np, robot_state_joints_config, policy_joints_config
     )
+    extra_state_np = extra_state_np or {}
     num_envs = rgb_list_np[0].shape[0]
 
     language_keys = modality_configs["language"].modality_keys
@@ -274,18 +300,30 @@ def build_gr00t_policy_observations(
         "video": {},
         "state": {},
     }
+    video_horizon = len(modality_configs["video"].delta_indices)
     for i, video_key in enumerate(video_keys):
-
-        policy_observations["video"][video_key] = rgb_list_np[i].reshape(
-            num_envs, 1, target_image_size[0], target_image_size[1], target_image_size[2]
+        video_np = rgb_list_np[i]
+        assert video_np.ndim == 5, (
+            f"video for '{video_key}' must be (N, T, H, W, C); got shape {video_np.shape}. Stack the"
+            " frames with VideoHistoryBuffer before calling this function."
         )
+        assert video_np.shape[1] == video_horizon, (
+            f"video for '{video_key}' must carry {video_horizon} frame(s) to match delta_indices"
+            f" {modality_configs['video'].delta_indices}; got {video_np.shape[1]}"
+        )
+        policy_observations["video"][video_key] = video_np
     for state_key in state_keys:
-        if state_key in joint_pos_state_policy:
+        if state_key in extra_state_np:
+            arr = np.asarray(extra_state_np[state_key])
+        elif state_key in joint_pos_state_policy:
             arr = joint_pos_state_policy[state_key]
-            assert (
-                arr.shape[0] == num_envs
-            ), f"joint_pos_state_policy[{state_key}] has shape {arr.shape} but expected ({num_envs}, -1)"
-            policy_observations["state"][state_key] = arr.reshape(num_envs, 1, -1)
+        else:
+            continue
+        assert arr.shape[0] == num_envs, f"state '{state_key}' has shape {arr.shape} but expected ({num_envs}, -1)"
+        # The policy server rejects any state that is not float32, so narrow here rather than
+        # relying on every producer to remember: joint states inherit float32 from the env
+        # observation, but a computed state such as eef_9d is naturally float64.
+        policy_observations["state"][state_key] = arr.reshape(num_envs, 1, -1).astype(np.float32)
 
     return policy_observations
 

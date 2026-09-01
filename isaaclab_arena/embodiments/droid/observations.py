@@ -9,6 +9,17 @@ import warp as wp
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
 
+DROID_EE_BODY_NAME = "panda_link8"
+"""Franka end-effector link used by DROID's Polymetis forward kinematics."""
+
+
+def _ee_body_index(robot) -> int:
+    """Return the Polymetis-compatible end-effector body index."""
+    assert (
+        DROID_EE_BODY_NAME in robot.data.body_names
+    ), f"DROID robot is missing end-effector body '{DROID_EE_BODY_NAME}'. Available bodies: {robot.data.body_names}"
+    return robot.data.body_names.index(DROID_EE_BODY_NAME)
+
 
 def arm_joint_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     robot = env.scene[asset_cfg.name]
@@ -38,12 +49,12 @@ def gripper_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityC
 def ee_pos(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Returns the end effector position (x, y, z) in the world frame."""
     robot = env.scene[asset_cfg.name]
-    body_idx = robot.data.body_names.index("base_link")  # Robotiq gripper base link
+    body_idx = _ee_body_index(robot)
     return wp.to_torch(robot.data.body_pos_w)[:, body_idx, :]
 
 
 def ee_quat(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Returns the end effector orientation as quaternion (w, x, y, z) in the world frame."""
     robot = env.scene[asset_cfg.name]
-    body_idx = robot.data.body_names.index("base_link")  # Robotiq gripper base link
+    body_idx = _ee_body_index(robot)
     return wp.to_torch(robot.data.body_quat_w)[:, body_idx, :]

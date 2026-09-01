@@ -12,6 +12,8 @@ This policy connects to a GR00T policy server (launched via
 from __future__ import annotations
 
 import gymnasium as gym
+import logging
+import numpy as np
 import torch
 from dataclasses import dataclass
 from enum import Enum
@@ -26,10 +28,15 @@ from isaaclab_arena_gr00t.policy.gr00t_core import (
     build_gr00t_action_tensor,
     build_gr00t_policy_observations,
     compute_action_dim,
+    extract_eef_pose_from_nested_obs,
     extract_obs_numpy_from_torch,
     load_gr00t_joint_configs,
+    resize_rgb_for_policy,
 )
-from isaaclab_arena_gr00t.utils.io_utils import create_config_from_yaml, load_gr00t_modality_config_from_file
+from isaaclab_arena_gr00t.policy.video_history import VideoHistoryBuffer
+from isaaclab_arena_gr00t.utils.io_utils import create_config_from_yaml, to_numpy
+
+logger = logging.getLogger(__name__)
 
 
 class ActionSchedulerType(str, Enum):
@@ -102,25 +109,9 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
             self.robot_state_joints_config,
         ) = load_gr00t_joint_configs(self.policy_config)
 
-        self.modality_configs = load_gr00t_modality_config_from_file(
-            self.policy_config.modality_config_path,
-            self.policy_config.embodiment_tag,
-        )
-
-        # Action / chunk shapes
-        self.action_dim = compute_action_dim(self.task_mode, self.robot_action_joints_config)
-        self.action_chunk_length = self.policy_config.action_chunk_length
-
-        self._chunking_state: ActionScheduler | None = action_scheduler_cls(
-            num_envs=self.num_envs,
-            action_chunk_length=self.action_chunk_length,
-            action_horizon=self.policy_config.action_horizon,
-            action_dim=self.action_dim,
-            device=self.device,
-            dtype=torch.float,
-        )
-
-        # Connect to GR00T's native PolicyClient
+        # Connect before allocating any temporal buffers: the checkpoint's processor is the source
+        # of truth for video/state/action horizons, and base and post-trained checkpoints can expose
+        # different contracts under the same embodiment tag.
         from gr00t.policy.server_client import PolicyClient
 
         client = PolicyClient(
@@ -132,6 +123,64 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
         self._client: Any | None = client
         if not client.ping():
             raise ConnectionError(f"Cannot reach GR00T policy server at {config.remote_host}:{config.remote_port}")
+
+        self.modality_configs = client.get_modality_config()
+        required_modalities = {"video", "state", "action", "language"}
+        assert isinstance(
+            self.modality_configs, dict
+        ), f"GR00T policy server returned {type(self.modality_configs).__name__}, expected a modality-config dict"
+        missing_modalities = required_modalities - self.modality_configs.keys()
+        assert not missing_modalities, (
+            f"GR00T policy server omitted required modalities {sorted(missing_modalities)};"
+            f" got {sorted(self.modality_configs)}"
+        )
+        assert len(self.policy_config.pov_cam_name_sim) == len(self.modality_configs["video"].modality_keys), (
+            f"Arena config provides cameras {self.policy_config.pov_cam_name_sim}, but the remote checkpoint expects"
+            f" {self.modality_configs['video'].modality_keys}"
+        )
+
+        # Video history. GR00T checkpoints declare how many past frames they want through the video
+        # modality config's delta_indices; the server rejects a request that carries a different
+        # number, so the buffer is sized from the config rather than assumed.
+        self._video_history = VideoHistoryBuffer(
+            delta_indices=self.modality_configs["video"].delta_indices,
+            num_envs=self.num_envs,
+        )
+
+        # GR00T N1.7's DROID embodiment additionally conditions on the end-effector pose.
+        self._requires_eef_state = "eef_9d" in self.modality_configs["state"].modality_keys
+        # Every DROID checkpoint, N1.6 and N1.7 alike, was trained on a 0-1 gripper signal.
+        self._normalizes_gripper_state = self.task_mode == TaskMode.DROID_MANIPULATION and (
+            "gripper_position" in self.modality_configs["state"].modality_keys
+        )
+
+        # Action / chunk shapes
+        self.action_dim = compute_action_dim(self.task_mode, self.robot_action_joints_config)
+        self.action_chunk_length = self.policy_config.action_chunk_length
+        self.action_horizon = len(self.modality_configs["action"].delta_indices)
+        assert 1 <= self.action_chunk_length <= self.action_horizon, (
+            f"action_chunk_length={self.action_chunk_length} must be between 1 and the remote checkpoint's"
+            f" action horizon {self.action_horizon}"
+        )
+
+        self._chunking_state: ActionScheduler | None = action_scheduler_cls(
+            num_envs=self.num_envs,
+            action_chunk_length=self.action_chunk_length,
+            action_horizon=self.action_horizon,
+            action_dim=self.action_dim,
+            device=self.device,
+            dtype=torch.float,
+        )
+
+        logger.info(
+            "GR00T remote contract: video=%s delta=%s state=%s action=%s horizon=%d execution=%d",
+            self.modality_configs["video"].modality_keys,
+            self.modality_configs["video"].delta_indices,
+            self.modality_configs["state"].modality_keys,
+            self.modality_configs["action"].modality_keys,
+            self.action_horizon,
+            self.action_chunk_length,
+        )
 
         self.task_description: str | None = None
 
@@ -151,12 +200,79 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
     def get_action(self, env: gym.Env, observation: dict[str, Any]) -> torch.Tensor:
         assert self._chunking_state is not None, "GR00T remote policy has been closed"
 
+        # Record every control step, not just the steps that trigger inference: the video
+        # delta_indices are expressed in control steps, so a buffer fed only on inference steps
+        # would hand the model the wrong point in the past.
+        self._video_history.push(self._resized_frames(observation, self.policy_config.pov_cam_name_sim))
+
         def fetch_chunk() -> torch.Tensor:
-            return self._get_action_chunk(observation, self.policy_config.pov_cam_name_sim)
+            return self._get_action_chunk(env, observation, self.policy_config.pov_cam_name_sim)
 
         return self._chunking_state.get_action(
             fetch_chunk,
             hold_action=self._extract_hold_action(observation),
+        )
+
+    def _resized_frames(self, observation: dict[str, Any], camera_names: list[str] | str) -> list[np.ndarray]:
+        """Return this step's camera frames, resized once to the policy's input size."""
+        if isinstance(camera_names, str):
+            camera_names = [camera_names]
+        rgb_list_np, _ = extract_obs_numpy_from_torch(nested_obs=observation, camera_names=camera_names)
+        target_image_size = getattr(self.policy_config, "target_image_size", None)
+        if target_image_size is not None:
+            rgb_list_np = resize_rgb_for_policy(rgb_list_np=rgb_list_np, target_image_size=target_image_size)
+        return rgb_list_np
+
+    def _build_extra_state(self, env: gym.Env, observation: dict[str, Any]) -> dict[str, np.ndarray]:
+        """Return state entries the joint remapping cannot express or would express wrongly.
+
+        Two DROID state keys need this. ``eef_9d`` is a Cartesian pose rather than a set of joints.
+        ``gripper_position`` *is* a joint, but DROID reports it normalised to 0-1 (confirmed by the
+        dataset statistics shipped with GR00T, ``demo_data/droid_sample/meta/stats.json``), whereas
+        the raw ``finger_joint`` the joint remapping would pick up is in radians over 0-pi/4. Sending
+        radians means the policy never sees a fully closed gripper.
+        """
+        extra_state: dict[str, np.ndarray] = {}
+        if self._normalizes_gripper_state:
+            gripper_position = observation["policy"].get("gripper_pos")
+            assert gripper_position is not None, (
+                "A DROID policy needs a normalised 'gripper_pos' observation term, which this"
+                " embodiment does not publish."
+            )
+            extra_state["gripper_position"] = to_numpy(gripper_position).reshape(self.num_envs, -1)
+
+        if self._requires_eef_state:
+            from isaaclab_arena_gr00t.utils.droid_eef import compute_eef_9d_state
+
+            eef_pose = extract_eef_pose_from_nested_obs(observation)
+            assert eef_pose is not None, (
+                "The policy asks for an 'eef_9d' state but the embodiment publishes no 'eef_pos' /"
+                " 'eef_quat' observation terms."
+            )
+            eef_pos_w, eef_quat_w_wxyz = eef_pose
+            base_pos_w, base_quat_w_wxyz = self._robot_base_pose(env)
+            extra_state["eef_9d"] = compute_eef_9d_state(eef_pos_w, eef_quat_w_wxyz, base_pos_w, base_quat_w_wxyz)
+        return extra_state
+
+    @staticmethod
+    def _robot_base_pose(env: gym.Env) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Return the semantic DROID base pose, or (None, None) when no environment is available.
+
+        The DROID USD's ``panda_link0`` uses the opposite X/Y convention from Polymetis. The fixed
+        asset-to-semantic transform is composed here so root placement still works without exposing
+        the USD convention to the policy.
+        """
+        import warp as wp
+
+        from isaaclab_arena_gr00t.utils.droid_eef import droid_base_pose_from_usd_root
+
+        try:
+            robot = env.unwrapped.scene["robot"]
+        except (AttributeError, KeyError):
+            return None, None
+        return droid_base_pose_from_usd_root(
+            wp.to_torch(robot.data.root_pos_w).detach().cpu().numpy(),
+            wp.to_torch(robot.data.root_quat_w).detach().cpu().numpy(),
         )
 
     def _extract_hold_action(self, observation: dict[str, Any]) -> torch.Tensor:
@@ -171,7 +287,7 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
         return hold_action
 
     def _get_action_chunk(
-        self, observation: dict[str, Any], camera_names: list[str] | str = "robot_head_cam_rgb"
+        self, env: gym.Env, observation: dict[str, Any], camera_names: list[str] | str = "robot_head_cam_rgb"
     ) -> torch.Tensor:
         """Get an action chunk from the remote GR00T server.
 
@@ -183,15 +299,16 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
         # 1. Reuse the same obs translation as local policy
         assert self.task_description is not None, "Task description is not set"
         assert self._client is not None, "GR00T remote policy has been closed"
-        rgb_list_np, joint_pos_sim_np = extract_obs_numpy_from_torch(nested_obs=observation, camera_names=camera_names)
+        _, joint_pos_sim_np = extract_obs_numpy_from_torch(nested_obs=observation, camera_names=camera_names)
         policy_observations = build_gr00t_policy_observations(
-            rgb_list_np=rgb_list_np,
+            rgb_list_np=self._video_history.stack(),
             joint_pos_sim_np=joint_pos_sim_np,
             task_description=self.task_description,
             policy_config=self.policy_config,
             robot_state_joints_config=self.robot_state_joints_config,
             policy_joints_config=self.policy_joints_config,
             modality_configs=self.modality_configs,
+            extra_state_np=self._build_extra_state(env, observation),
         )
 
         # 2. Call GR00T's own client
@@ -217,6 +334,7 @@ class Gr00tRemoteClosedloopPolicy(PolicyBase[Gr00tRemoteClosedloopPolicyCfg]):
         assert self._chunking_state is not None, "GR00T remote policy has been closed"
         self._client.reset()
         self._chunking_state.reset(env_ids)
+        self._video_history.reset(env_ids if isinstance(env_ids, slice) else to_numpy(env_ids))
 
     def close(self) -> None:
         """Release Arena-side resources for the remote GR00T policy client."""

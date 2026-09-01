@@ -49,3 +49,52 @@ def resize_frames_with_padding(
         frames = np.stack([cv2.resize(f, target_size_cv2) for f in frames])
 
     return frames
+
+
+def resize_frames_preserving_aspect(
+    frames: torch.Tensor | np.ndarray, target_image_size: tuple, bgr_conversion: bool = False
+) -> np.ndarray:
+    """Resize frames to the policy's input size without distorting them.
+
+    Reimplements GR00T's ``resize_with_pad`` (``examples/DROID/utils.py``), which is what the
+    pretrained DROID checkpoints were fed: scale by ``max(width_ratio, height_ratio)`` so the whole
+    frame fits, then centre it on a zero canvas. Only the short side is padded, and only when the
+    aspect ratios genuinely differ -- a 720x1280 camera going to 180x320 scales by exactly 4 and
+    needs no padding at all.
+
+    This differs from :func:`resize_frames_with_padding`, which pads the frame to a square *before*
+    resizing and therefore squashes a 16:9 camera by ~1.8x vertically. That function is kept as-is
+    because the LeRobot conversion path has produced datasets with it.
+
+    Args:
+        frames: (N, H, W, C) uint8 frames.
+        target_image_size: Target (height, width[, channels]).
+        bgr_conversion: Whether the input is BGR and must be converted to RGB.
+
+    Returns:
+        (N, target_height, target_width, C) uint8 frames.
+    """
+    from PIL import Image
+
+    if not isinstance(frames, (torch.Tensor, np.ndarray)):
+        raise ValueError(f"Invalid frame type: {type(frames)}")
+    frames = to_numpy(frames)
+    if bgr_conversion:
+        frames = frames[..., ::-1]
+
+    target_height, target_width = int(target_image_size[0]), int(target_image_size[1])
+    if frames.shape[1] == target_height and frames.shape[2] == target_width:
+        return frames
+
+    resized = []
+    for frame in frames:
+        current_height, current_width = frame.shape[:2]
+        ratio = max(current_width / target_width, current_height / target_height)
+        scaled_height, scaled_width = int(current_height / ratio), int(current_width / ratio)
+        # PIL's BILINEAR reduction is area-weighted, so it antialiases the 4x downsample the way
+        # the reference client does; cv2's INTER_LINEAR would alias instead.
+        scaled = Image.fromarray(frame).resize((scaled_width, scaled_height), resample=Image.BILINEAR)
+        canvas = Image.new(scaled.mode, (target_width, target_height), 0)
+        canvas.paste(scaled, (max(0, (target_width - scaled_width) // 2), max(0, (target_height - scaled_height) // 2)))
+        resized.append(np.asarray(canvas))
+    return np.stack(resized)

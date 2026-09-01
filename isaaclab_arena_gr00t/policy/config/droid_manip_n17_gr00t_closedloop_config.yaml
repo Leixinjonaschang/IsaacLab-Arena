@@ -1,0 +1,34 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Configure Gr00tRemoteClosedloopPolicy for GR00T N1.7 DROID manipulation.
+#
+# Differences from droid_manip_gr00t_closedloop_config.yaml (GR00T N1.6):
+#   - the DROID embodiment tag was renamed and now advertises its relative action representation;
+#   - the model conditions on an additional eef_9d state;
+#   - video and action horizons come from the connected server because the N1.7 base and
+#     post-trained DROID checkpoints publish different contracts under the same embodiment tag.
+
+# Legacy construction-time bound. The remote checkpoint's action delta_indices are authoritative at runtime.
+action_horizon: 40
+embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
+video_backend: decord
+# The remote client obtains the checkpoint's resolved modality config from the policy server.
+
+policy_joints_config_path: isaaclab_arena_gr00t/embodiments/droid/gr00t_8dof_joint_space.yaml
+action_joints_config_path: isaaclab_arena_gr00t/embodiments/droid/8dof_joint_space.yaml
+state_joints_config_path: isaaclab_arena_gr00t/embodiments/droid/13dof_joint_space.yaml
+
+# Action chunk length is the number of actions executed per inference rollout, could be less than
+# the remote action horizon. Match RoboLab's validated N1.7 DROID setting: replay eight actions
+# before querying the server again. Replaying the full chunk would leave a relative-action model
+# running open loop for over two seconds.
+action_chunk_length: 8
+task_mode_name: droid_manipulation
+
+pov_cam_name_sim: ["external_camera_rgb", "wrist_camera_rgb"]
+
+original_image_size: [720, 1280, 3]
+target_image_size: [180, 320, 3]
