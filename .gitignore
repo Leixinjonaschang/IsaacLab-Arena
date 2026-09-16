@@ -108,3 +108,7 @@ core.*
 .codegraph/
 
 results/
+
+results/
+
+diagnostics/
