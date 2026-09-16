@@ -1,0 +1,35 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Expected input & output joint names, in listed order, for the GR00T state/action space.
+# 20 dof: the arms plus the three commanded gripper joints per hand (hand_joint1 drives the
+# closed-loop linkage, the two Support joints follow the same target). Group order here defines
+# the slice layout in modality.json: left_arm 0-7, left_hand 7-10, right_arm 10-17,
+# right_hand 17-20.
+joints:
+  left_arm:
+    - left_arm_joint1
+    - left_arm_joint2
+    - left_arm_joint3
+    - left_arm_joint4
+    - left_arm_joint5
+    - left_arm_joint6
+    - left_arm_joint7
+  left_hand:
+    - left_hand_joint1
+    - left_Right_Support_Joint
+    - left_Left_Support_Joint
+  right_arm:
+    - right_arm_joint1
+    - right_arm_joint2
+    - right_arm_joint3
+    - right_arm_joint4
+    - right_arm_joint5
+    - right_arm_joint6
+    - right_arm_joint7
+  right_hand:
+    - right_hand_joint1
+    - right_Right_Support_Joint
+    - right_Left_Support_Joint

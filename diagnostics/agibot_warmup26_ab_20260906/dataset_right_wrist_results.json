@@ -1,0 +1,1060 @@
+{
+  "parquet": "../data_process/data/stack_bowls/data/chunk-000/episode_000078.parquet",
+  "episode_index": 78,
+  "query_stride": 16,
+  "baseline": {
+    "trace_count": 6,
+    "start_row": 26,
+    "queries": [
+      {
+        "query_index": 0,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0000.npz",
+        "dataset_row": 26,
+        "state_error": {
+          "left_position_mm": 0.009872849099338055,
+          "right_position_mm": 0.010041260160505772,
+          "arm_joint_rms_rad": 1.25686014484927e-07,
+          "nearest_eef_row": 27,
+          "nearest_eef_mean_position_mm": 0.00976473931223154,
+          "nearest_arm_row": 18,
+          "nearest_arm_joint_rms_rad": 6.421593212735388e-08
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 2.118868827819824,
+            "left_shape_error_mm": 2.1437549591064453,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 1.3574295043945312,
+            "right_shape_error_mm": 1.3057886362075806,
+            "right_hand_mae": 0.004449056927114725
+          },
+          "16": {
+            "left_position_error_mm": 10.533985137939453,
+            "left_shape_error_mm": 10.538164138793945,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 3.0239460468292236,
+            "right_shape_error_mm": 2.9803366661071777,
+            "right_hand_mae": 0.0042063831351697445
+          },
+          "40": {
+            "left_position_error_mm": 125.5757064819336,
+            "left_shape_error_mm": 125.47664642333984,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 8.326460838317871,
+            "right_shape_error_mm": 8.258578300476074,
+            "right_hand_mae": 0.002135546412318945
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 5,
+            "target": 9
+          },
+          "right": {
+            "prediction": 13,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965754032135,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818458750844,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 27.21839141845703,
+            "controller_tracking_error_mm": 1.2284213304519653,
+            "total_next_state_error_mm": 27.49917984008789
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 5.174127101898193,
+            "controller_tracking_error_mm": 0.17925821244716644,
+            "total_next_state_error_mm": 5.254352569580078
+          }
+        }
+      },
+      {
+        "query_index": 1,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0001.npz",
+        "dataset_row": 42,
+        "state_error": {
+          "left_position_mm": 27.49917984008789,
+          "right_position_mm": 5.254352569580078,
+          "arm_joint_rms_rad": 0.041805364191532135,
+          "nearest_eef_row": 41,
+          "nearest_eef_mean_position_mm": 15.730010032653809,
+          "nearest_arm_row": 42,
+          "nearest_arm_joint_rms_rad": 0.041805364191532135
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 46.560218811035156,
+            "left_shape_error_mm": 15.616198539733887,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 7.0065178871154785,
+            "right_shape_error_mm": 3.099533796310425,
+            "right_hand_mae": 0.0016987299313768744
+          },
+          "16": {
+            "left_position_error_mm": 88.45829772949219,
+            "left_shape_error_mm": 59.00143814086914,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 9.16364860534668,
+            "right_shape_error_mm": 5.067798137664795,
+            "right_hand_mae": 0.0014156065881252289
+          },
+          "40": {
+            "left_position_error_mm": 109.49909973144531,
+            "left_shape_error_mm": 88.72798919677734,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 14.365216255187988,
+            "right_shape_error_mm": 10.588077545166016,
+            "right_hand_mae": 0.0006633127923123538
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 7,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818458750844,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 169.24624633789062,
+            "controller_tracking_error_mm": 24.808080673217773,
+            "total_next_state_error_mm": 146.201416015625
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 14.58938980102539,
+            "controller_tracking_error_mm": 0.5450975298881531,
+            "total_next_state_error_mm": 14.254891395568848
+          }
+        }
+      },
+      {
+        "query_index": 2,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0002.npz",
+        "dataset_row": 58,
+        "state_error": {
+          "left_position_mm": 146.201416015625,
+          "right_position_mm": 14.254891395568848,
+          "arm_joint_rms_rad": 0.21192806959152222,
+          "nearest_eef_row": 78,
+          "nearest_eef_mean_position_mm": 47.357330322265625,
+          "nearest_arm_row": 57,
+          "nearest_arm_joint_rms_rad": 0.21168175339698792
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 165.5895538330078,
+            "left_shape_error_mm": 32.315582275390625,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 17.171083450317383,
+            "right_shape_error_mm": 3.6120452880859375,
+            "right_hand_mae": 0.006552251521497965
+          },
+          "16": {
+            "left_position_error_mm": 164.82156372070312,
+            "left_shape_error_mm": 52.15714645385742,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 18.737022399902344,
+            "right_shape_error_mm": 5.296414375305176,
+            "right_hand_mae": 0.007442063186317682
+          },
+          "40": {
+            "left_position_error_mm": 130.00550842285156,
+            "left_shape_error_mm": 80.59365844726562,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 22.335025787353516,
+            "right_shape_error_mm": 9.174040794372559,
+            "right_hand_mae": 0.0056139035150408745
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 6,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965754032135,
+            -0.14357204735279083,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281844478100538,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 140.35711669921875,
+            "controller_tracking_error_mm": 1.1994293928146362,
+            "total_next_state_error_mm": 141.54135131835938
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 21.672473907470703,
+            "controller_tracking_error_mm": 0.5918782949447632,
+            "total_next_state_error_mm": 21.469371795654297
+          }
+        }
+      },
+      {
+        "query_index": 3,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0003.npz",
+        "dataset_row": 74,
+        "state_error": {
+          "left_position_mm": 141.54135131835938,
+          "right_position_mm": 21.469371795654297,
+          "arm_joint_rms_rad": 0.2580024003982544,
+          "nearest_eef_row": 109,
+          "nearest_eef_mean_position_mm": 37.82011413574219,
+          "nearest_arm_row": 71,
+          "nearest_arm_joint_rms_rad": 0.24829113483428955
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 129.6044158935547,
+            "left_shape_error_mm": 57.388797760009766,
+            "left_hand_mae": 0.00048534819507040083,
+            "right_position_error_mm": 22.551652908325195,
+            "right_shape_error_mm": 1.7616915702819824,
+            "right_hand_mae": 0.01043506246060133
+          },
+          "16": {
+            "left_position_error_mm": 142.13670349121094,
+            "left_shape_error_mm": 93.46639251708984,
+            "left_hand_mae": 0.0005662404000759125,
+            "right_position_error_mm": 22.774824142456055,
+            "right_shape_error_mm": 2.157005548477173,
+            "right_hand_mae": 0.009423911571502686
+          },
+          "40": {
+            "left_position_error_mm": 132.5680694580078,
+            "left_shape_error_mm": 105.81395721435547,
+            "left_hand_mae": 0.2617187798023224,
+            "right_position_error_mm": 23.85246467590332,
+            "right_shape_error_mm": 3.4978420734405518,
+            "right_hand_mae": 0.007167027797549963
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 16,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818523943424225,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 158.09954833984375,
+            "controller_tracking_error_mm": 5.9075703620910645,
+            "total_next_state_error_mm": 152.86636352539062
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 22.802658081054688,
+            "controller_tracking_error_mm": 0.18182292580604553,
+            "total_next_state_error_mm": 22.767560958862305
+          }
+        }
+      },
+      {
+        "query_index": 4,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0004.npz",
+        "dataset_row": 90,
+        "state_error": {
+          "left_position_mm": 152.86636352539062,
+          "right_position_mm": 22.767560958862305,
+          "arm_joint_rms_rad": 0.37879860401153564,
+          "nearest_eef_row": 151,
+          "nearest_eef_mean_position_mm": 41.58967208862305,
+          "nearest_arm_row": 68,
+          "nearest_arm_joint_rms_rad": 0.21747659146785736
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 154.24237060546875,
+            "left_shape_error_mm": 1.9170005321502686,
+            "left_hand_mae": 0.04643196240067482,
+            "right_position_error_mm": 21.652605056762695,
+            "right_shape_error_mm": 1.8945835828781128,
+            "right_hand_mae": 0.004287272691726685
+          },
+          "16": {
+            "left_position_error_mm": 155.37661743164062,
+            "left_shape_error_mm": 4.313614368438721,
+            "left_hand_mae": 0.1874619722366333,
+            "right_position_error_mm": 23.14567756652832,
+            "right_shape_error_mm": 2.320584297180176,
+            "right_hand_mae": 0.004085041582584381
+          },
+          "40": {
+            "left_position_error_mm": 109.497802734375,
+            "left_shape_error_mm": 61.66899108886719,
+            "left_hand_mae": 0.5770249962806702,
+            "right_position_error_mm": 24.81289291381836,
+            "right_shape_error_mm": 3.7853004932403564,
+            "right_hand_mae": 0.0033003916032612324
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 8,
+            "target": 14
+          },
+          "right": {
+            "prediction": 20,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532673835754395
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281845409423113,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 148.91819763183594,
+            "controller_tracking_error_mm": 9.613210678100586,
+            "total_next_state_error_mm": 140.23480224609375
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 26.44517707824707,
+            "controller_tracking_error_mm": 0.352730393409729,
+            "total_next_state_error_mm": 26.195817947387695
+          }
+        }
+      },
+      {
+        "query_index": 5,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/warmup26_traces/inference_0005.npz",
+        "dataset_row": 106,
+        "state_error": {
+          "left_position_mm": 140.23480224609375,
+          "right_position_mm": 26.195817947387695,
+          "arm_joint_rms_rad": 0.4041658043861389,
+          "nearest_eef_row": 151,
+          "nearest_eef_mean_position_mm": 43.3509521484375,
+          "nearest_arm_row": 67,
+          "nearest_arm_joint_rms_rad": 0.23270165920257568
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 99.53473663330078,
+            "left_shape_error_mm": 44.40541458129883,
+            "left_hand_mae": 0.6417359113693237,
+            "right_position_error_mm": 26.82864761352539,
+            "right_shape_error_mm": 2.028733730316162,
+            "right_hand_mae": 0.0051770880818367004
+          },
+          "16": {
+            "left_position_error_mm": 80.88640594482422,
+            "left_shape_error_mm": 73.98760223388672,
+            "left_hand_mae": 0.7832057476043701,
+            "right_position_error_mm": 27.136062622070312,
+            "right_shape_error_mm": 2.3341665267944336,
+            "right_hand_mae": 0.0040445998311042786
+          },
+          "40": {
+            "left_position_error_mm": 69.61572265625,
+            "left_shape_error_mm": 112.83187866210938,
+            "left_hand_mae": 0.7004731297492981,
+            "right_position_error_mm": 29.381216049194336,
+            "right_shape_error_mm": 4.261846542358398,
+            "right_hand_mae": 0.0025885417126119137
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 7,
+            "target": 1
+          },
+          "right": {
+            "prediction": 20,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532673835754395
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281842149794102,
+            0.653267502784729
+          ]
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "trace_count": 6,
+    "start_row": 26,
+    "queries": [
+      {
+        "query_index": 0,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0000.npz",
+        "dataset_row": 26,
+        "state_error": {
+          "left_position_mm": 0.009872849099338055,
+          "right_position_mm": 0.010041260160505772,
+          "arm_joint_rms_rad": 1.25686014484927e-07,
+          "nearest_eef_row": 27,
+          "nearest_eef_mean_position_mm": 0.00976473931223154,
+          "nearest_arm_row": 18,
+          "nearest_arm_joint_rms_rad": 6.421593212735388e-08
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 1.7759904861450195,
+            "left_shape_error_mm": 1.7489076852798462,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 1.4278427362442017,
+            "right_shape_error_mm": 1.3976038694381714,
+            "right_hand_mae": 0.003316568909212947
+          },
+          "16": {
+            "left_position_error_mm": 12.187629699707031,
+            "left_shape_error_mm": 12.254223823547363,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 2.3129448890686035,
+            "right_shape_error_mm": 2.286658525466919,
+            "right_hand_mae": 0.0027503259479999542
+          },
+          "40": {
+            "left_position_error_mm": 53.93790054321289,
+            "left_shape_error_mm": 53.972434997558594,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 7.104994297027588,
+            "right_shape_error_mm": 7.049746990203857,
+            "right_hand_mae": 0.001342805684544146
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 8,
+            "target": 9
+          },
+          "right": {
+            "prediction": 15,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965754032135,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818458750844,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 29.160400390625,
+            "controller_tracking_error_mm": 0.6221274733543396,
+            "total_next_state_error_mm": 28.642732620239258
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 3.7047042846679688,
+            "controller_tracking_error_mm": 0.16587264835834503,
+            "total_next_state_error_mm": 3.6365747451782227
+          }
+        }
+      },
+      {
+        "query_index": 1,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0001.npz",
+        "dataset_row": 42,
+        "state_error": {
+          "left_position_mm": 28.642732620239258,
+          "right_position_mm": 3.6365747451782227,
+          "arm_joint_rms_rad": 0.035572126507759094,
+          "nearest_eef_row": 44,
+          "nearest_eef_mean_position_mm": 8.896430969238281,
+          "nearest_arm_row": 41,
+          "nearest_arm_joint_rms_rad": 0.03438975289463997
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 42.034244537353516,
+            "left_shape_error_mm": 21.48961067199707,
+            "left_hand_mae": 0.000323563814163208,
+            "right_position_error_mm": 5.605004787445068,
+            "right_shape_error_mm": 2.8554694652557373,
+            "right_hand_mae": 0.0023458674550056458
+          },
+          "16": {
+            "left_position_error_mm": 60.983154296875,
+            "left_shape_error_mm": 42.676395416259766,
+            "left_hand_mae": 0.000242672860622406,
+            "right_position_error_mm": 6.679256439208984,
+            "right_shape_error_mm": 3.8169097900390625,
+            "right_hand_mae": 0.0023458662908524275
+          },
+          "40": {
+            "left_position_error_mm": 57.1807746887207,
+            "left_shape_error_mm": 57.14543914794922,
+            "left_hand_mae": 9.706914715934545e-05,
+            "right_position_error_mm": 8.510083198547363,
+            "right_shape_error_mm": 5.873289108276367,
+            "right_hand_mae": 0.0012619137996807694
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 8,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818458750844,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 66.6099624633789,
+            "controller_tracking_error_mm": 3.4161410331726074,
+            "total_next_state_error_mm": 67.80460357666016
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 9.061445236206055,
+            "controller_tracking_error_mm": 0.4322125315666199,
+            "total_next_state_error_mm": 9.122274398803711
+          }
+        }
+      },
+      {
+        "query_index": 2,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0002.npz",
+        "dataset_row": 58,
+        "state_error": {
+          "left_position_mm": 67.80460357666016,
+          "right_position_mm": 9.122274398803711,
+          "arm_joint_rms_rad": 0.15097872912883759,
+          "nearest_eef_row": 61,
+          "nearest_eef_mean_position_mm": 26.546369552612305,
+          "nearest_arm_row": 57,
+          "nearest_arm_joint_rms_rad": 0.14918875694274902
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 46.40740966796875,
+            "left_shape_error_mm": 31.163148880004883,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 10.078829765319824,
+            "right_shape_error_mm": 2.4095747470855713,
+            "right_hand_mae": 0.005500661674886942
+          },
+          "16": {
+            "left_position_error_mm": 54.69799041748047,
+            "left_shape_error_mm": 61.60057067871094,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 11.23917293548584,
+            "right_shape_error_mm": 3.35652756690979,
+            "right_hand_mae": 0.006552255246788263
+          },
+          "40": {
+            "left_position_error_mm": 42.80376434326172,
+            "left_shape_error_mm": 63.6967658996582,
+            "left_hand_mae": 0.0,
+            "right_position_error_mm": 15.464385986328125,
+            "right_shape_error_mm": 7.24674129486084,
+            "right_hand_mae": 0.00566243939101696
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 11,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965754032135,
+            -0.14357204735279083,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281844478100538,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 48.170570373535156,
+            "controller_tracking_error_mm": 1.8810725212097168,
+            "total_next_state_error_mm": 49.9743766784668
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 14.68952465057373,
+            "controller_tracking_error_mm": 0.47899287939071655,
+            "total_next_state_error_mm": 14.455801010131836
+          }
+        }
+      },
+      {
+        "query_index": 3,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0003.npz",
+        "dataset_row": 74,
+        "state_error": {
+          "left_position_mm": 49.9743766784668,
+          "right_position_mm": 14.455801010131836,
+          "arm_joint_rms_rad": 0.22601184248924255,
+          "nearest_eef_row": 78,
+          "nearest_eef_mean_position_mm": 16.470081329345703,
+          "nearest_arm_row": 70,
+          "nearest_arm_joint_rms_rad": 0.20587721467018127
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 29.4497013092041,
+            "left_shape_error_mm": 11.336694717407227,
+            "left_hand_mae": 8.0890953540802e-05,
+            "right_position_error_mm": 14.525240898132324,
+            "right_shape_error_mm": 1.6226252317428589,
+            "right_hand_mae": 0.006147792097181082
+          },
+          "16": {
+            "left_position_error_mm": 25.697444915771484,
+            "left_shape_error_mm": 22.598617553710938,
+            "left_hand_mae": 4.0445476770401e-05,
+            "right_position_error_mm": 15.052335739135742,
+            "right_shape_error_mm": 1.8333795070648193,
+            "right_hand_mae": 0.0054197595454752445
+          },
+          "40": {
+            "left_position_error_mm": 36.87786865234375,
+            "left_shape_error_mm": 39.282066345214844,
+            "left_hand_mae": 3.235637996112928e-05,
+            "right_position_error_mm": 16.878257751464844,
+            "right_shape_error_mm": 3.2290563583374023,
+            "right_hand_mae": 0.004659375175833702
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 1
+          },
+          "right": {
+            "prediction": 16,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532674431800842
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.0042818523943424225,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 25.39325523376465,
+            "controller_tracking_error_mm": 1.2798120975494385,
+            "total_next_state_error_mm": 25.618486404418945
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 17.237520217895508,
+            "controller_tracking_error_mm": 0.3348653316497803,
+            "total_next_state_error_mm": 17.149534225463867
+          }
+        }
+      },
+      {
+        "query_index": 4,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0004.npz",
+        "dataset_row": 90,
+        "state_error": {
+          "left_position_mm": 25.618486404418945,
+          "right_position_mm": 17.149534225463867,
+          "arm_joint_rms_rad": 0.3058347702026367,
+          "nearest_eef_row": 185,
+          "nearest_eef_mean_position_mm": 10.037516593933105,
+          "nearest_arm_row": 72,
+          "nearest_arm_joint_rms_rad": 0.23496657609939575
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 71.67039489746094,
+            "left_shape_error_mm": 45.93423843383789,
+            "left_hand_mae": 8.0890953540802e-05,
+            "right_position_error_mm": 17.662443161010742,
+            "right_shape_error_mm": 1.7687050104141235,
+            "right_hand_mae": 0.00622868537902832
+          },
+          "16": {
+            "left_position_error_mm": 102.61064147949219,
+            "left_shape_error_mm": 76.88075256347656,
+            "left_hand_mae": 0.000121336430311203,
+            "right_position_error_mm": 19.093523025512695,
+            "right_shape_error_mm": 2.9087154865264893,
+            "right_hand_mae": 0.0052984245121479034
+          },
+          "40": {
+            "left_position_error_mm": 59.76773452758789,
+            "left_shape_error_mm": 47.762943267822266,
+            "left_hand_mae": 0.20133556425571442,
+            "right_position_error_mm": 20.60295295715332,
+            "right_shape_error_mm": 4.595200061798096,
+            "right_hand_mae": 0.004044597037136555
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 1,
+            "target": 14
+          },
+          "right": {
+            "prediction": 14,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532673835754395
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840908467769623,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281845409423113,
+            0.653267502784729
+          ]
+        },
+        "transition_to_next_query": {
+          "left": {
+            "command_index": 14,
+            "model_command_error_mm": 131.20884704589844,
+            "controller_tracking_error_mm": 5.3524169921875,
+            "total_next_state_error_mm": 125.87317657470703
+          },
+          "right": {
+            "command_index": 14,
+            "model_command_error_mm": 22.17752456665039,
+            "controller_tracking_error_mm": 0.3874684274196625,
+            "total_next_state_error_mm": 21.939424514770508
+          }
+        }
+      },
+      {
+        "query_index": 5,
+        "trace": "diagnostics/agibot_warmup26_ab_20260906/dataset_right_wrist_traces/inference_0005.npz",
+        "dataset_row": 106,
+        "state_error": {
+          "left_position_mm": 125.87317657470703,
+          "right_position_mm": 21.939424514770508,
+          "arm_joint_rms_rad": 0.3191145360469818,
+          "nearest_eef_row": 131,
+          "nearest_eef_mean_position_mm": 14.677083969116211,
+          "nearest_arm_row": 70,
+          "nearest_arm_joint_rms_rad": 0.2041776478290558
+        },
+        "action_metrics": {
+          "8": {
+            "left_position_error_mm": 73.859619140625,
+            "left_shape_error_mm": 44.298179626464844,
+            "left_hand_mae": 0.007037600036710501,
+            "right_position_error_mm": 20.864002227783203,
+            "right_shape_error_mm": 1.8225651979446411,
+            "right_hand_mae": 0.003963711205869913
+          },
+          "16": {
+            "left_position_error_mm": 45.25979232788086,
+            "left_shape_error_mm": 75.47282409667969,
+            "left_hand_mae": 0.11308691650629044,
+            "right_position_error_mm": 22.28668975830078,
+            "right_shape_error_mm": 2.5465641021728516,
+            "right_hand_mae": 0.004368169698864222
+          },
+          "40": {
+            "left_position_error_mm": 26.22793197631836,
+            "left_shape_error_mm": 96.42601013183594,
+            "left_hand_mae": 0.31324756145477295,
+            "right_position_error_mm": 22.386619567871094,
+            "right_shape_error_mm": 3.5108394622802734,
+            "right_hand_mae": 0.0033327494747936726
+          }
+        },
+        "motion_onset_over_5mm": {
+          "left": {
+            "prediction": 8,
+            "target": 1
+          },
+          "right": {
+            "prediction": 20,
+            "target": null
+          }
+        },
+        "scene_positions": {
+          "bowl0": [
+            0.4446965456008911,
+            -0.14357209205627441,
+            0.6532673835754395
+          ],
+          "bowl1": [
+            0.42533445358276367,
+            0.17840909957885742,
+            0.653267502784729
+          ],
+          "bowl2": [
+            0.36551886796951294,
+            0.004281842149794102,
+            0.653267502784729
+          ]
+        }
+      }
+    ]
+  },
+  "aligned_comparison": {
+    "common_dataset_rows": [
+      26,
+      42,
+      58,
+      74,
+      90,
+      106
+    ],
+    "state_error_by_row": [
+      {
+        "dataset_row": 26,
+        "baseline_state_left_position_mm": 0.009872849099338055,
+        "candidate_state_left_position_mm": 0.009872849099338055,
+        "baseline_state_right_position_mm": 0.010041260160505772,
+        "candidate_state_right_position_mm": 0.010041260160505772
+      },
+      {
+        "dataset_row": 42,
+        "baseline_state_left_position_mm": 27.49917984008789,
+        "candidate_state_left_position_mm": 28.642732620239258,
+        "baseline_state_right_position_mm": 5.254352569580078,
+        "candidate_state_right_position_mm": 3.6365747451782227
+      },
+      {
+        "dataset_row": 58,
+        "baseline_state_left_position_mm": 146.201416015625,
+        "candidate_state_left_position_mm": 67.80460357666016,
+        "baseline_state_right_position_mm": 14.254891395568848,
+        "candidate_state_right_position_mm": 9.122274398803711
+      },
+      {
+        "dataset_row": 74,
+        "baseline_state_left_position_mm": 141.54135131835938,
+        "candidate_state_left_position_mm": 49.9743766784668,
+        "baseline_state_right_position_mm": 21.469371795654297,
+        "candidate_state_right_position_mm": 14.455801010131836
+      },
+      {
+        "dataset_row": 90,
+        "baseline_state_left_position_mm": 152.86636352539062,
+        "candidate_state_left_position_mm": 25.618486404418945,
+        "baseline_state_right_position_mm": 22.767560958862305,
+        "candidate_state_right_position_mm": 17.149534225463867
+      },
+      {
+        "dataset_row": 106,
+        "baseline_state_left_position_mm": 140.23480224609375,
+        "candidate_state_left_position_mm": 125.87317657470703,
+        "baseline_state_right_position_mm": 26.195817947387695,
+        "candidate_state_right_position_mm": 21.939424514770508
+      }
+    ],
+    "post_initial_summary": {
+      "dataset_rows": [
+        42,
+        58,
+        74,
+        90,
+        106
+      ],
+      "baseline_mean_left_position_mm": 121.66862258911132,
+      "candidate_mean_left_position_mm": 59.58267517089844,
+      "candidate_reduction_left_percent": 51.02872548157641,
+      "baseline_mean_right_position_mm": 17.988398933410643,
+      "candidate_mean_right_position_mm": 13.260721778869629,
+      "candidate_reduction_right_percent": 26.281811805719368
+    }
+  },
+  "initial_live_vs_dataset_image_metrics": {
+    "baseline": {
+      "ego_view": {
+        "raw_mae_uint8": 4.4818572998046875,
+        "processor_spatial_mae_uint8": 3.786829630533854
+      },
+      "left_wrist_view": {
+        "raw_mae_uint8": 2.7010180155436196,
+        "processor_spatial_mae_uint8": 2.123418172200521
+      },
+      "right_wrist_view": {
+        "raw_mae_uint8": 3.1178385416666665,
+        "processor_spatial_mae_uint8": 2.6728617350260415
+      }
+    },
+    "candidate": {
+      "ego_view": {
+        "raw_mae_uint8": 4.476000467936198,
+        "processor_spatial_mae_uint8": 3.7801920572916665
+      },
+      "left_wrist_view": {
+        "raw_mae_uint8": 2.6967366536458335,
+        "processor_spatial_mae_uint8": 2.1192779541015625
+      },
+      "right_wrist_view": {
+        "raw_mae_uint8": 0.0,
+        "processor_spatial_mae_uint8": 0.0
+      }
+    }
+  }
+}

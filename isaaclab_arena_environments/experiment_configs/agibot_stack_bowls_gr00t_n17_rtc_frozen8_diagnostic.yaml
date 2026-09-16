@@ -1,0 +1,24 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+runs:
+  agibot_stack_bowls_gr00t_n17_rtc_frozen8_diagnostic:
+    environment:
+      type: agibot_stack_bowls
+      enable_cameras: true
+      embodiment: agibot
+      arm_mode: dual
+      action_mode: gr00t
+      teleop_device: null
+    environment_builder:
+      language_instruction: Stack the bowls together.
+    policy:
+      type: isaaclab_arena_gr00t.policy.gr00t_remote_closedloop_policy.Gr00tRemoteClosedloopPolicy
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_rtc_frozen8_config.yaml
+      policy_device: cuda:0
+      remote_host: 127.0.0.1
+      remote_port: 5557
+    rollout_limit:
+      num_steps: 220

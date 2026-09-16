@@ -1,0 +1,75 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Arena-side translation for checkpoint-10000's resolved ``new_embodiment`` contract.
+# The running server remains authoritative for modality keys and temporal horizons.
+action_horizon: 40
+embodiment_tag: NEW_EMBODIMENT
+video_backend: decord
+
+# Five-sample teacher forcing on exact episode-78 frames reduced prefix-8 position error from
+# 9.12/10.98 mm (left/right) at 4 steps to 6.20/5.38 mm at 8 steps.
+denoising_steps: 8
+
+policy_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/gr00t_20dof_joint_space.yaml
+action_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/20dof_joint_space.yaml
+state_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/34dof_joint_space.yaml
+
+# Execute only the region where expert-rollout probes remain accurate.  On this checkpoint the
+# left-EEF translation error rises from 15.9 mm over 16 steps to 23.8/37.8 mm over 24/40 steps.
+# Eight-step replanning never reached the gripper-close phase; sixteen steps both preserves phase
+# progress and avoids the high-variance horizon tail.
+action_chunk_length: 16
+action_sample_count: 5
+# The demonstrations normally label the first action at the current EEF translation (median
+# action[0]-state[0] is 0.19/0.20 mm; 73% are within 1 mm). Remove the model's chunk-wide first-frame
+# translation bias on every replan while retaining its predicted within-chunk motion and all rotations/hands.
+action_chunk_translation_anchor_alpha: 1.0
+task_mode_name: agibot_bimanual_manipulation
+
+# Native RTC propagated this checkpoint's inaccurate long-horizon tail into the executable prefix
+# and never reached a grasp in controller A/B tests.  Fresh 16-step chunks performed best.
+rtc_enabled: false
+rtc_frozen_steps: 0
+rtc_ramp_rate: 4.0
+
+# Besides refreshing the mounted cameras, reproduce the deterministic startup transition present in
+# every one of the 200 stack-bowls demonstrations. The recorded left EEF moves 44 mm before frame 3
+# and both arms are stable by frame 9. Holding the raw reset pose while new frames arrive creates an
+# observation combination absent from training.
+initial_camera_warmup_steps: 10
+initial_agibot_ready_eef_9d:
+  # left EEF: XYZ plus the first two rotation-matrix columns, in base_link
+  - 0.875074387
+  - 0.193889618
+  - 0.924620092
+  - -0.028867580
+  - -0.139225766
+  - 0.989839792
+  - -0.693537295
+  - -0.710332990
+  - -0.120138019
+  # right EEF
+  - 0.906601906
+  - -0.235231400
+  - 0.931243241
+  - -0.028678259
+  - 0.139268979
+  - 0.989839256
+  - 0.596086621
+  - -0.792525768
+  - 0.128777459
+
+# The sidecar wrist videos used for this checkpoint lead the recorded proprioceptive state by
+# exactly one 15 Hz control step. Episode-0 motion cross-correlation measures the same +1 offset
+# on both wrists (0.842 left, 0.917 right); delaying online state recreates that training contract.
+state_delay_steps: 1
+
+# Positional order maps to the checkpoint's ego_view, left_wrist_view, right_wrist_view keys.
+pov_cam_name_sim: ["head_cam_rgb", "left_wrist_cam_rgb", "right_wrist_cam_rgb"]
+
+# The fine-tuning data contains 512x512 RGB; the checkpoint processor performs its own 256 crop/resize.
+original_image_size: [512, 512, 3]
+target_image_size: [512, 512, 3]

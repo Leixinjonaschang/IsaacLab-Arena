@@ -290,8 +290,15 @@ def write_video_job(queue: mp.Queue, error_queue: mp.Queue, config: Gr00tDataset
                     frames = resize_frames_with_padding(
                         frames, target_image_size=config.target_image_size, bgr_conversion=False, pad_img=True
                     )
-                # h264 codec encoding
-                torchvision.io.write_video(video_path, frames, fps, video_codec="h264")
+                # h264 codec encoding. torchvision removed its video API (write_video is gone
+                # from 0.22 on), so fall back to imageio-ffmpeg, which writes the same
+                # h264/yuv420p mp4 the LeRobot loaders expect.
+                if hasattr(torchvision.io, "write_video"):
+                    torchvision.io.write_video(video_path, frames, fps, video_codec="h264")
+                else:
+                    import imageio.v3 as iio
+
+                    iio.imwrite(video_path, np.asarray(frames, dtype=np.uint8), fps=fps, codec="libx264")
 
         except Exception as e:
             # Get the traceback and put in error queue
@@ -520,26 +527,43 @@ def convert_hdf5_to_lerobot(config: Gr00tDatasetConfig):
         # 2.2. Update total length, episodes_info
         length = df_ret_dict["length"]
         total_length += length
-        episodes_info.append({
-            "episode_index": episode_index,
-            "tasks": [tasks[task_index] for task_index in df_ret_dict["annotation"]],
-            "length": length,
-        })
-        # 2.3. Generate videos/
-        new_video_relpath = config.video_path.format(
-            episode_chunk=episode_chunk, video_key=config.lerobot_keys["video"], episode_index=episode_index
+        episodes_info.append(
+            {
+                "episode_index": episode_index,
+                "tasks": [tasks[task_index] for task_index in df_ret_dict["annotation"]],
+                "length": length,
+            }
         )
-        new_video_path = config.lerobot_data_dir / new_video_relpath
-        if config.video_name_lerobot not in video_paths.keys():
-            video_paths[config.video_name_lerobot] = new_video_path
+        # 2.3. Generate videos/
+        if config.sidecar_camera_streams:
+            # Re-rendered sidecar mp4s: one per (demo, camera), copied verbatim -- no image data
+            # is read from (or need exist in) the HDF5.
+            for stream, video_key in config.sidecar_camera_streams.items():
+                source_path = config.sidecar_camera_dir / f"{trajectory_id}_{stream}.mp4"
+                assert source_path.exists(), f"missing sidecar video {source_path}"
+                new_video_relpath = config.video_path.format(
+                    episode_chunk=episode_chunk, video_key=video_key, episode_index=episode_index
+                )
+                new_video_path = config.lerobot_data_dir / new_video_relpath
+                new_video_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source_path, new_video_path)
+                if video_key not in video_paths:
+                    video_paths[video_key] = new_video_path
+        else:
+            new_video_relpath = config.video_path.format(
+                episode_chunk=episode_chunk, video_key=config.lerobot_keys["video"], episode_index=episode_index
+            )
+            new_video_path = config.lerobot_data_dir / new_video_relpath
+            if config.video_name_lerobot not in video_paths.keys():
+                video_paths[config.video_name_lerobot] = new_video_path
 
-        assert config.pov_cam_name_sim in trajectory["camera_obs"]
+            assert config.pov_cam_name_sim in trajectory["camera_obs"]
 
-        frames = np.array(trajectory["camera_obs"][config.pov_cam_name_sim])
-        # remove last frame due to how Lab reports observations
-        frames = frames[:-1]
-        assert len(frames) == length
-        queue.put((new_video_path, frames, config.fps, "image"))
+            frames = np.array(trajectory["camera_obs"][config.pov_cam_name_sim])
+            # remove last frame due to how Lab reports observations
+            frames = frames[:-1]
+            assert len(frames) == length
+            queue.put((new_video_path, frames, config.fps, "image"))
 
         if example_data is None:
             example_data = df_ret_dict
@@ -575,7 +599,8 @@ def convert_hdf5_to_lerobot(config: Gr00tDatasetConfig):
             total_episodes=len(trajectory_ids),
             total_frames=total_length,
             total_tasks=len(tasks),
-            total_videos=len(trajectory_ids),
+            total_videos=len(trajectory_ids)
+            * (len(config.sidecar_camera_streams) if config.sidecar_camera_streams else 1),
             total_chunks=len(trajectory_ids) // config.chunks_size,
             step_data=example_data["data"],
             video_paths=video_paths,

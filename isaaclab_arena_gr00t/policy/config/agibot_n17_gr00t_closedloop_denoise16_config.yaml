@@ -1,0 +1,50 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Isolated A/B configuration: identical to agibot_n17_gr00t_closedloop_config.yaml
+# except for request-level denoising_steps=16.
+action_horizon: 40
+embodiment_tag: NEW_EMBODIMENT
+video_backend: decord
+denoising_steps: 16
+
+policy_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/gr00t_20dof_joint_space.yaml
+action_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/20dof_joint_space.yaml
+state_joints_config_path: isaaclab_arena_gr00t/embodiments/agibot/34dof_joint_space.yaml
+
+action_chunk_length: 16
+action_sample_count: 5
+action_chunk_translation_anchor_alpha: 1.0
+task_mode_name: agibot_bimanual_manipulation
+
+rtc_enabled: false
+rtc_frozen_steps: 0
+rtc_ramp_rate: 4.0
+
+initial_camera_warmup_steps: 10
+initial_agibot_ready_eef_9d:
+  - 0.875074387
+  - 0.193889618
+  - 0.924620092
+  - -0.028867580
+  - -0.139225766
+  - 0.989839792
+  - -0.693537295
+  - -0.710332990
+  - -0.120138019
+  - 0.906601906
+  - -0.235231400
+  - 0.931243241
+  - -0.028678259
+  - 0.139268979
+  - 0.989839256
+  - 0.596086621
+  - -0.792525768
+  - 0.128777459
+
+state_delay_steps: 1
+pov_cam_name_sim: ["head_cam_rgb", "left_wrist_cam_rgb", "right_wrist_cam_rgb"]
+original_image_size: [512, 512, 3]
+target_image_size: [512, 512, 3]

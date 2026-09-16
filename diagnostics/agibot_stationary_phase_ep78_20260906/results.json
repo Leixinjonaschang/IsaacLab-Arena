@@ -1,0 +1,785 @@
+{
+  "config": {
+    "parquet": "/home/ubuntu/projects/isaaclab_arena_proj/data_process/data/stack_bowls/data/chunk-000/episode_000078.parquet",
+    "video_root": "/home/ubuntu/projects/isaaclab_arena_proj/data_process/data/stack_bowls/videos/chunk-000",
+    "episode_index": 78,
+    "rows": [
+      9,
+      10,
+      14,
+      18,
+      22,
+      26
+    ],
+    "reference_row": 26,
+    "host": "127.0.0.1",
+    "port": 5558,
+    "seed": 10,
+    "denoising_steps": 8,
+    "samples": 5
+  },
+  "rows": {
+    "9": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 3.8331985706463456e-05,
+      "state_max_abs_from_reference": 0.0002211928367614746,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 1.89056396484375,
+          "processor_spatial_mae_uint8": 1.6926422119140625
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 1.1970990498860676,
+          "processor_spatial_mae_uint8": 0.9015299479166666
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 1.5878880818684895,
+          "processor_spatial_mae_uint8": 1.2824910481770833
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.17985394515562803,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.09014510868375865,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.16410509124398232,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.4245036778743791,
+          "right_hand_mae": 0.003882805583998561
+        },
+        "prefix_8": {
+          "left_position_error_mm": 2.615053206682205,
+          "left_shape_error_mm": 2.4803278502076864,
+          "left_rotation_error_degrees": 0.3667786909131568,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.4115856029093266,
+          "right_shape_error_mm": 1.4460647944360971,
+          "right_rotation_error_degrees": 0.5232169438024976,
+          "right_hand_mae": 0.0025076468009501696
+        },
+        "prefix_16": {
+          "left_position_error_mm": 4.257543943822384,
+          "left_shape_error_mm": 4.139710683375597,
+          "left_rotation_error_degrees": 0.4968123428135713,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 2.3913122713565826,
+          "right_shape_error_mm": 2.455910900607705,
+          "right_rotation_error_degrees": 0.6230658824530549,
+          "right_hand_mae": 0.0023054194170981646
+        },
+        "prefix_40": {
+          "left_position_error_mm": 15.578744001686573,
+          "left_shape_error_mm": 15.556273981928825,
+          "left_rotation_error_degrees": 1.9813233430360166,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 5.326957441866398,
+          "right_shape_error_mm": 5.368085578083992,
+          "right_rotation_error_degrees": 0.6646738864043984,
+          "right_hand_mae": 0.0011648430954664946
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 10,
+        "step_7_displacement_mm": 4.243076324462891,
+        "step_15_displacement_mm": 8.542750358581543,
+        "step_39_displacement_mm": 186.048828125
+      },
+      "target_motion": {
+        "first_over_5mm": 26,
+        "step_7_displacement_mm": 0.0007152557373046875,
+        "step_15_displacement_mm": 0.00011920928955078125,
+        "step_39_displacement_mm": 135.22581481933594
+      }
+    },
+    "10": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 4.752833774546161e-05,
+      "state_max_abs_from_reference": 0.00027292966842651367,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 1.7942097981770833,
+          "processor_spatial_mae_uint8": 1.5950775146484375
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 1.1613820393880208,
+          "processor_spatial_mae_uint8": 0.8767547607421875
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 1.5359268188476562,
+          "processor_spatial_mae_uint8": 1.2482961018880208
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.174695102032274,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.10786762102987771,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.1790028327377513,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.3079957467758621,
+          "right_hand_mae": 0.003882805583998561
+        },
+        "prefix_8": {
+          "left_position_error_mm": 2.6615927927196026,
+          "left_shape_error_mm": 2.5322786532342434,
+          "left_rotation_error_degrees": 0.3669902878984527,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.1474878992885351,
+          "right_shape_error_mm": 1.120006199926138,
+          "right_rotation_error_degrees": 0.3902813277133253,
+          "right_hand_mae": 0.0023458648938685656
+        },
+        "prefix_16": {
+          "left_position_error_mm": 4.500154405832291,
+          "left_shape_error_mm": 4.382606595754623,
+          "left_rotation_error_degrees": 0.5090687861371108,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.952361548319459,
+          "right_shape_error_mm": 1.9595730118453503,
+          "right_rotation_error_degrees": 0.49085629527777563,
+          "right_hand_mae": 0.0022245272994041443
+        },
+        "prefix_40": {
+          "left_position_error_mm": 14.83098603785038,
+          "left_shape_error_mm": 14.800633303821087,
+          "left_rotation_error_degrees": 1.6967257549167392,
+          "left_hand_mae": 1.617818998056464e-05,
+          "right_position_error_mm": 5.115910433232784,
+          "right_shape_error_mm": 5.111684091389179,
+          "right_rotation_error_degrees": 0.5439629867990584,
+          "right_hand_mae": 0.0011163075687363744
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 10,
+        "step_7_displacement_mm": 4.389359474182129,
+        "step_15_displacement_mm": 9.493708610534668,
+        "step_39_displacement_mm": 193.36941528320312
+      },
+      "target_motion": {
+        "first_over_5mm": 25,
+        "step_7_displacement_mm": 0.00095367431640625,
+        "step_15_displacement_mm": 0.0002384185791015625,
+        "step_39_displacement_mm": 151.3995819091797
+      }
+    },
+    "14": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 2.7796511403721524e-07,
+      "state_max_abs_from_reference": 9.5367431640625e-07,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 1.3093910217285156,
+          "processor_spatial_mae_uint8": 1.136444091796875
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 0.8473523457845052,
+          "processor_spatial_mae_uint8": 0.6572214762369791
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 1.1253992716471355,
+          "processor_spatial_mae_uint8": 0.9250335693359375
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.17500680405646563,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.09168638086137722,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.18977493164129555,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.27635376420564733,
+          "right_hand_mae": 0.0051770806312561035
+        },
+        "prefix_8": {
+          "left_position_error_mm": 2.5911456905305386,
+          "left_shape_error_mm": 2.470264909788966,
+          "left_rotation_error_degrees": 0.3688015388745374,
+          "left_hand_mae": 8.0890953540802e-05,
+          "right_position_error_mm": 1.2192262802273035,
+          "right_shape_error_mm": 1.2013765517622232,
+          "right_rotation_error_degrees": 0.35692617183055375,
+          "right_hand_mae": 0.002750324783846736
+        },
+        "prefix_16": {
+          "left_position_error_mm": 4.502913914620876,
+          "left_shape_error_mm": 4.391984082758427,
+          "left_rotation_error_degrees": 0.50111801423894,
+          "left_hand_mae": 4.0445476770401e-05,
+          "right_position_error_mm": 1.8094265833497047,
+          "right_shape_error_mm": 1.7874594777822495,
+          "right_rotation_error_degrees": 0.396072438314309,
+          "right_hand_mae": 0.0023054194170981646
+        },
+        "prefix_40": {
+          "left_position_error_mm": 26.441937312483788,
+          "left_shape_error_mm": 26.43859013915062,
+          "left_rotation_error_degrees": 3.2735310000782762,
+          "left_hand_mae": 1.617818998056464e-05,
+          "right_position_error_mm": 4.6090614050626755,
+          "right_shape_error_mm": 4.561034496873617,
+          "right_rotation_error_degrees": 0.45466655748239465,
+          "right_hand_mae": 0.00116484216414392
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 6,
+        "step_7_displacement_mm": 4.23426628112793,
+        "step_15_displacement_mm": 7.489901542663574,
+        "step_39_displacement_mm": 281.93646240234375
+      },
+      "target_motion": {
+        "first_over_5mm": 21,
+        "step_7_displacement_mm": 0.0,
+        "step_15_displacement_mm": 0.019097313284873962,
+        "step_39_displacement_mm": 212.9715118408203
+      }
+    },
+    "18": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 4.5122843062017637e-07,
+      "state_max_abs_from_reference": 1.9073486328125e-06,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 0.9301338195800781,
+          "processor_spatial_mae_uint8": 0.789154052734375
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 0.5868021647135416,
+          "processor_spatial_mae_uint8": 0.4573923746744792
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 0.8052787780761719,
+          "processor_spatial_mae_uint8": 0.6621042887369791
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.17504682182334363,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.12436691616148564,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.18912306404672563,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.22813695190496122,
+          "right_hand_mae": 0.005824228283017874
+        },
+        "prefix_8": {
+          "left_position_error_mm": 2.505669603124261,
+          "left_shape_error_mm": 2.3861750960350037,
+          "left_rotation_error_degrees": 0.417981450257868,
+          "left_hand_mae": 8.0890953540802e-05,
+          "right_position_error_mm": 1.1152212973684072,
+          "right_shape_error_mm": 1.1046555591747165,
+          "right_rotation_error_degrees": 0.3573634399857546,
+          "right_hand_mae": 0.0025885377544909716
+        },
+        "prefix_16": {
+          "left_position_error_mm": 3.8356317672878504,
+          "left_shape_error_mm": 3.7564728409051895,
+          "left_rotation_error_degrees": 0.42972523315877537,
+          "left_hand_mae": 4.0445476770401e-05,
+          "right_position_error_mm": 1.760941231623292,
+          "right_shape_error_mm": 1.7457646317780018,
+          "right_rotation_error_degrees": 0.3797447074890971,
+          "right_hand_mae": 0.0020222950261086226
+        },
+        "prefix_40": {
+          "left_position_error_mm": 47.492507845163345,
+          "left_shape_error_mm": 47.525353729724884,
+          "left_rotation_error_degrees": 8.138912312412591,
+          "left_hand_mae": 1.617818998056464e-05,
+          "right_position_error_mm": 5.3229802288115025,
+          "right_shape_error_mm": 5.273842718452215,
+          "right_rotation_error_degrees": 0.4838639522844336,
+          "right_hand_mae": 0.000970700872130692
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 10,
+        "step_7_displacement_mm": 4.145275115966797,
+        "step_15_displacement_mm": 6.10326623916626,
+        "step_39_displacement_mm": 301.98486328125
+      },
+      "target_motion": {
+        "first_over_5mm": 17,
+        "step_7_displacement_mm": 0.0007152557373046875,
+        "step_15_displacement_mm": 2.464866876602173,
+        "step_39_displacement_mm": 259.95037841796875
+      }
+    },
+    "22": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.008333333333333333,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.075,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 3.673006574445026e-07,
+      "state_max_abs_from_reference": 1.3709068298339844e-06,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 0.5682220458984375,
+          "processor_spatial_mae_uint8": 0.4717356363932292
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 0.3424784342447917,
+          "processor_spatial_mae_uint8": 0.2688344319661458
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 0.4310747782389323,
+          "processor_spatial_mae_uint8": 0.3500773111979167
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.17607620975468308,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.10327427949193357,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.1891629071906209,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.2545656054544663,
+          "right_hand_mae": 0.005177100654691458
+        },
+        "prefix_8": {
+          "left_position_error_mm": 1.6205841675400734,
+          "left_shape_error_mm": 1.561405835673213,
+          "left_rotation_error_degrees": 0.21700004290088953,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.193915493786335,
+          "right_shape_error_mm": 1.1618509888648987,
+          "right_rotation_error_degrees": 0.35722245406921316,
+          "right_hand_mae": 0.0025076493620872498
+        },
+        "prefix_16": {
+          "left_position_error_mm": 10.584007948637009,
+          "left_shape_error_mm": 10.624866932630539,
+          "left_rotation_error_degrees": 1.8694283943113241,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.7661278834566474,
+          "right_shape_error_mm": 1.7354051815345883,
+          "right_rotation_error_degrees": 0.401248642793816,
+          "right_hand_mae": 0.00206274283118546
+        },
+        "prefix_40": {
+          "left_position_error_mm": 72.09070026874542,
+          "left_shape_error_mm": 72.13912159204483,
+          "left_rotation_error_degrees": 16.78364270010666,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 6.2421513721346855,
+          "right_shape_error_mm": 6.186154671013355,
+          "right_rotation_error_degrees": 0.5248895502970852,
+          "right_hand_mae": 0.0009545242064632475
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 10,
+        "step_7_displacement_mm": 1.387832760810852,
+        "step_15_displacement_mm": 58.70420455932617,
+        "step_39_displacement_mm": 302.956787109375
+      },
+      "target_motion": {
+        "first_over_5mm": 13,
+        "step_7_displacement_mm": 0.019063051789999008,
+        "step_15_displacement_mm": 14.23287296295166,
+        "step_39_displacement_mm": 284.9303894042969
+      }
+    },
+    "26": {
+      "reset_info": {
+        "seed": 10
+      },
+      "server_info": [
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.016666666666666666,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.0,
+            "right_eef_9d": 0.0
+          }
+        },
+        {
+          "rtc_applied": false,
+          "rtc_model_input_present": false,
+          "rtc_time_normalization_aligned": false,
+          "num_inference_timesteps": 8,
+          "relative_eef_translation_percentile_clip_fraction": {
+            "left_eef_9d": 0.075,
+            "right_eef_9d": 0.0
+          }
+        }
+      ],
+      "state_rms_from_reference": 0.0,
+      "state_max_abs_from_reference": 0.0,
+      "image_distance_from_reference": {
+        "ego_view": {
+          "raw_mae_uint8": 0.0,
+          "processor_spatial_mae_uint8": 0.0
+        },
+        "left_wrist_view": {
+          "raw_mae_uint8": 0.0,
+          "processor_spatial_mae_uint8": 0.0
+        },
+        "right_wrist_view": {
+          "raw_mae_uint8": 0.0,
+          "processor_spatial_mae_uint8": 0.0
+        }
+      },
+      "prediction_metrics": {
+        "prefix_1": {
+          "left_position_error_mm": 0.17558012041263282,
+          "left_shape_error_mm": 0.0,
+          "left_rotation_error_degrees": 0.09700645092476784,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 0.18912306404672563,
+          "right_shape_error_mm": 0.0,
+          "right_rotation_error_degrees": 0.24141529773698292,
+          "right_hand_mae": 0.005824228283017874
+        },
+        "prefix_8": {
+          "left_position_error_mm": 1.9670315086841583,
+          "left_shape_error_mm": 1.9006038783118129,
+          "left_rotation_error_degrees": 0.1930841580652758,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 1.3385897036641836,
+          "right_shape_error_mm": 1.326719531789422,
+          "right_rotation_error_degrees": 0.3721979185777887,
+          "right_hand_mae": 0.0029121090192347765
+        },
+        "prefix_16": {
+          "left_position_error_mm": 7.886873558163643,
+          "left_shape_error_mm": 7.8909071162343025,
+          "left_rotation_error_degrees": 1.1553694514572053,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 2.0451624877750874,
+          "right_shape_error_mm": 2.024333458393812,
+          "right_rotation_error_degrees": 0.43378663724275457,
+          "right_hand_mae": 0.0023458648938685656
+        },
+        "prefix_40": {
+          "left_position_error_mm": 43.29759255051613,
+          "left_shape_error_mm": 43.32391172647476,
+          "left_rotation_error_degrees": 9.898127552092882,
+          "left_hand_mae": 0.0,
+          "right_position_error_mm": 6.704442203044891,
+          "right_shape_error_mm": 6.655754055827856,
+          "right_rotation_error_degrees": 0.5664501306425752,
+          "right_hand_mae": 0.0010677725076675415
+        }
+      },
+      "prediction_motion": {
+        "first_over_5mm": 9,
+        "step_7_displacement_mm": 1.6461596488952637,
+        "step_15_displacement_mm": 69.0360336303711,
+        "step_39_displacement_mm": 300.58197021484375
+      },
+      "target_motion": {
+        "first_over_5mm": 9,
+        "step_7_displacement_mm": 2.4650509357452393,
+        "step_15_displacement_mm": 41.84492492675781,
+        "step_39_displacement_mm": 286.2049255371094
+      }
+    }
+  }
+}

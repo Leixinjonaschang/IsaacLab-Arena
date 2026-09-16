@@ -135,8 +135,15 @@ add_volume_if_it_exists() {
 
 # Forward host SSH auth into the container when available.
 SSH_DOCKER_ARGS=()
-if [ -S "$SSH_AUTH_SOCK" ]; then
-    SSH_DOCKER_ARGS+=("-v" "$SSH_AUTH_SOCK:/ssh-agent")
+SSH_AUTH_SOCK_SOURCE=""
+if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
+    # Cursor Remote SSH exposes SSH_AUTH_SOCK as a symlink. Docker may try to
+    # create a directory at that symlink and fail with "file exists", so bind
+    # mount the resolved Unix socket instead.
+    SSH_AUTH_SOCK_SOURCE=$(readlink -f -- "$SSH_AUTH_SOCK" 2>/dev/null || true)
+fi
+if [ -n "$SSH_AUTH_SOCK_SOURCE" ] && [ -S "$SSH_AUTH_SOCK_SOURCE" ]; then
+    SSH_DOCKER_ARGS+=("-v" "$SSH_AUTH_SOCK_SOURCE:/ssh-agent")
     SSH_DOCKER_ARGS+=("--env" "SSH_AUTH_SOCK=/ssh-agent")
 fi
 

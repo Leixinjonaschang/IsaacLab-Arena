@@ -3,14 +3,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import torch
+from collections.abc import Sequence
 
+import torch
 import warp as wp
 from isaaclab.envs import ManagerBasedEnv
 from isaaclab.managers import SceneEntityCfg
 
 from isaaclab_arena.utils.pose import Pose
 from isaaclab_arena.utils.velocity import Velocity
+
+
+def _velocity_is_writable(asset) -> bool:
+    """Whether an asset's root accepts velocity writes.
+
+    PhysX rejects velocities on kinematic rigid bodies and fixed-base articulation roots. The GPU
+    tensor pipeline swallows the write silently, but on the CPU device every such write logs a
+    ``Body must be non-kinematic!`` error -- one pair per asset per reset.
+    """
+    if getattr(asset, "is_fixed_base", False):
+        return False
+    rigid_props = getattr(getattr(asset.cfg, "spawn", None), "rigid_props", None)
+    return not getattr(rigid_props, "kinematic_enabled", False)
 
 
 def set_object_pose(
@@ -33,7 +47,7 @@ def set_object_pose(
     if velocity is not None:
         vel = velocity.to_tensor(device=env.device).unsqueeze(0).expand(num_envs, -1)
         asset.write_root_velocity_to_sim(vel, env_ids=env_ids)
-    else:
+    elif _velocity_is_writable(asset):
         asset.write_root_velocity_to_sim(torch.zeros(num_envs, 6, device=env.device), env_ids=env_ids)
 
 
@@ -127,3 +141,56 @@ def reset_all_articulation_joints(env: ManagerBasedEnv, env_ids: torch.Tensor):
         default_joint_vel = wp.to_torch(articulation_asset.data.default_joint_vel)[env_ids].clone()
         # set into the physics simulation
         articulation_asset.write_joint_state_to_sim(default_joint_pos, default_joint_vel, env_ids=env_ids)
+
+
+def reset_joint_position_and_velocity_to_defaults(
+    env: ManagerBasedEnv, env_ids: torch.Tensor, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+):
+    """Reset one articulation's joint positions and velocities to their defaults.
+
+    Also resets the joint drive targets, so targets left over from before the reset don't pull
+    the asset away from its default state.
+    """
+    asset = env.scene[asset_cfg.name]
+    default_joint_pos = asset.data.default_joint_pos.torch[env_ids].clone()
+    default_joint_vel = asset.data.default_joint_vel.torch[env_ids].clone()
+    asset.write_joint_position_to_sim_index(position=default_joint_pos, env_ids=env_ids)
+    asset.write_joint_velocity_to_sim_index(velocity=default_joint_vel, env_ids=env_ids)
+    asset.set_joint_position_target_index(target=default_joint_pos, env_ids=env_ids)
+    asset.set_joint_velocity_target_index(target=default_joint_vel, env_ids=env_ids)
+
+
+def reset_joint_position_and_velocity_to_pose(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    joint_names: Sequence[str],
+    joint_positions: Sequence[float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> None:
+    """Reset selected joints to an explicit pose without changing their observation reference.
+
+    The articulation's configured ``default_joint_pos`` remains untouched.  This distinction is
+    important when a policy was trained on joint positions relative to a reset/default pose but its
+    first model observation occurs after a deterministic startup motion.
+    """
+    if env_ids is None:
+        return
+    assert len(joint_names) == len(joint_positions), (
+        f"joint_names has {len(joint_names)} entries but joint_positions has {len(joint_positions)}"
+    )
+
+    asset = env.scene[asset_cfg.name]
+    joint_ids, resolved_names = asset.find_joints(list(joint_names), preserve_order=True)
+    assert len(joint_ids) == len(joint_names), (
+        f"Expected to resolve {len(joint_names)} joints, got {len(joint_ids)}: {resolved_names}"
+    )
+    position = torch.as_tensor(
+        joint_positions,
+        dtype=asset.data.default_joint_pos.torch.dtype,
+        device=env.device,
+    ).unsqueeze(0).repeat(len(env_ids), 1)
+    velocity = torch.zeros_like(position)
+    asset.write_joint_position_to_sim_index(position=position, joint_ids=joint_ids, env_ids=env_ids)
+    asset.write_joint_velocity_to_sim_index(velocity=velocity, joint_ids=joint_ids, env_ids=env_ids)
+    asset.set_joint_position_target_index(target=position, joint_ids=joint_ids, env_ids=env_ids)
+    asset.set_joint_velocity_target_index(target=velocity, joint_ids=joint_ids, env_ids=env_ids)

@@ -24,6 +24,7 @@ from isaaclab.devices.spacemouse import Se3SpaceMouseCfg
 from isaaclab_teleop import IsaacTeleopCfg, XrCfg
 
 from isaaclab_arena.assets.register import register_device
+from isaaclab_arena.devices.dual_arm_keyboard import DualArmSe3KeyboardCfg
 
 
 class TeleopDeviceBase(ABC):
@@ -73,6 +74,26 @@ class KeyboardCfg(TeleopDeviceBase):
         self, pipeline_builder: Callable | None = None, embodiment: object | None = None
     ) -> Se3KeyboardCfg:
         return Se3KeyboardCfg(
+            pos_sensitivity=self.pos_sensitivity,
+            rot_sensitivity=self.rot_sensitivity,
+        )
+
+
+@register_device
+class DualArmKeyboardCfg(TeleopDeviceBase):
+    """Keyboard driving a two-armed robot, with Tab switching which arm the keys move."""
+
+    name = "dual_arm_keyboard"
+
+    def __init__(self, sim_device: str | None = None, pos_sensitivity: float = 0.05, rot_sensitivity: float = 0.05):
+        super().__init__(sim_device=sim_device)
+        self.pos_sensitivity = pos_sensitivity
+        self.rot_sensitivity = rot_sensitivity
+
+    def get_device_cfg(
+        self, pipeline_builder: Callable | None = None, embodiment: object | None = None
+    ) -> DualArmSe3KeyboardCfg:
+        return DualArmSe3KeyboardCfg(
             pos_sensitivity=self.pos_sensitivity,
             rot_sensitivity=self.rot_sensitivity,
         )
