@@ -96,6 +96,11 @@ def compute_action_dim(task_mode: TaskMode, robot_action_joints_config: dict[str
     Returns:
         Total action dimension (number of action components per step).
     """
+    if task_mode == TaskMode.AGIBOT_BIMANUAL_MANIPULATION:
+        from isaaclab_arena_gr00t.utils.agibot_eef import AGIBOT_GR00T_ACTION_DIM
+
+        return AGIBOT_GR00T_ACTION_DIM
+
     action_dim = len(robot_action_joints_config)
     if task_mode == TaskMode.G1_LOCOMANIPULATION:
         action_dim += NUM_NAVIGATE_CMD + NUM_BASE_HEIGHT_CMD + NUM_TORSO_ORIENTATION_RPY_CMD
@@ -358,6 +363,11 @@ def build_gr00t_action_np(
     Returns:
         (N, horizon, action_dim) float64 numpy array.
     """
+    if task_mode == TaskMode.AGIBOT_BIMANUAL_MANIPULATION:
+        from isaaclab_arena_gr00t.utils.agibot_eef import build_agibot_gr00t_action_np
+
+        return build_agibot_gr00t_action_np(robot_action_policy)
+
     joints_sim_np = remap_policy_joints_to_sim_joints_np(
         robot_action_policy,
         policy_joints_config,

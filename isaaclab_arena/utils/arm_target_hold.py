@@ -124,10 +124,17 @@ def install_arm_target_hold(env_cfg) -> None:
         # idle drift to fix -- e.g. an env rebuilt with joint-space actions for demo recording.
         return
 
+    relative_terms = [
+        (term_name, term_cfg)
+        for term_name, term_cfg in rmpflow_terms
+        if term_cfg.use_relative_mode and not isinstance(term_cfg, TargetHoldingRMPFlowActionCfg)
+    ]
+    if not relative_terms:
+        # Absolute RMPFlow terms already hold the target supplied by the policy.
+        return
+
     held_terms = []
-    for term_name, term_cfg in rmpflow_terms:
-        if isinstance(term_cfg, TargetHoldingRMPFlowActionCfg) or not term_cfg.use_relative_mode:
-            continue
+    for term_name, term_cfg in relative_terms:
         held = TargetHoldingRMPFlowActionCfg(**{f.name: getattr(term_cfg, f.name) for f in fields(term_cfg)})
         held.class_type = TargetHoldingRMPFlowAction
         setattr(env_cfg.actions, term_name, held)

@@ -96,6 +96,8 @@ class _FakePolicyClient:
         self._ping_ok = ping_ok
         self.modality_configs = unitree_g1_sim_wbc_config
         self.last_observation: dict[str, Any] | None = None
+        self.last_options: dict[str, Any] | None = None
+        self.last_reset_options: dict[str, Any] | None = None
         self.get_action_calls = 0
         self.reset_called = False
 
@@ -105,15 +107,20 @@ class _FakePolicyClient:
     def get_modality_config(self):
         return self.modality_configs
 
-    def get_action(self, observation: dict[str, Any]):
+    def get_action(self, observation: dict[str, Any], options: dict[str, Any] | None = None):
         self.last_observation = observation
+        self.last_options = options
         self.get_action_calls += 1
-        # Match the real PolicyClient return signature: (action_dict, latency_or_meta).
+        # Match the real N1.7 PolicyClient contract, including the effective denoising steps.
         action_horizon = len(self.modality_configs["action"].delta_indices)
-        return _make_action_response(NUM_ENVS, action_horizon), None
+        info = {
+            "num_inference_timesteps": None if options is None else options.get("num_inference_timesteps")
+        }
+        return _make_action_response(NUM_ENVS, action_horizon), info
 
-    def reset(self):
+    def reset(self, options: dict[str, Any] | None = None):
         self.reset_called = True
+        self.last_reset_options = options
 
 
 @pytest.fixture

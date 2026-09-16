@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import torch
+from collections.abc import Sequence
 
+import torch
 import warp as wp
 from isaaclab.envs import ManagerBasedEnv
 from isaaclab.managers import SceneEntityCfg
@@ -157,3 +158,39 @@ def reset_joint_position_and_velocity_to_defaults(
     asset.write_joint_velocity_to_sim_index(velocity=default_joint_vel, env_ids=env_ids)
     asset.set_joint_position_target_index(target=default_joint_pos, env_ids=env_ids)
     asset.set_joint_velocity_target_index(target=default_joint_vel, env_ids=env_ids)
+
+
+def reset_joint_position_and_velocity_to_pose(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    joint_names: Sequence[str],
+    joint_positions: Sequence[float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> None:
+    """Reset selected joints to an explicit pose without changing their observation reference.
+
+    The articulation's configured ``default_joint_pos`` remains untouched.  This distinction is
+    important when a policy was trained on joint positions relative to a reset/default pose but its
+    first model observation occurs after a deterministic startup motion.
+    """
+    if env_ids is None:
+        return
+    assert len(joint_names) == len(joint_positions), (
+        f"joint_names has {len(joint_names)} entries but joint_positions has {len(joint_positions)}"
+    )
+
+    asset = env.scene[asset_cfg.name]
+    joint_ids, resolved_names = asset.find_joints(list(joint_names), preserve_order=True)
+    assert len(joint_ids) == len(joint_names), (
+        f"Expected to resolve {len(joint_names)} joints, got {len(joint_ids)}: {resolved_names}"
+    )
+    position = torch.as_tensor(
+        joint_positions,
+        dtype=asset.data.default_joint_pos.torch.dtype,
+        device=env.device,
+    ).unsqueeze(0).repeat(len(env_ids), 1)
+    velocity = torch.zeros_like(position)
+    asset.write_joint_position_to_sim_index(position=position, joint_ids=joint_ids, env_ids=env_ids)
+    asset.write_joint_velocity_to_sim_index(velocity=velocity, joint_ids=joint_ids, env_ids=env_ids)
+    asset.set_joint_position_target_index(target=position, joint_ids=joint_ids, env_ids=env_ids)
+    asset.set_joint_velocity_target_index(target=velocity, joint_ids=joint_ids, env_ids=env_ids)

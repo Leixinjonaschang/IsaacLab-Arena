@@ -1,0 +1,60 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Controlled GR00T N1.7 denoise sweep for AgiBot stack-bowls.
+# All four Runs share the same 20 reset sequence (seed 42). The launcher sets warmup=26;
+# the only policy-value difference among Runs is request-level denoising_steps.
+shared:
+  environment:
+    type: agibot_stack_bowls
+    enable_cameras: true
+    embodiment: agibot
+    arm_mode: dual
+    action_mode: gr00t_diffik
+    policy_ready_arm_joint_positions:
+      - -1.08173466
+      - 0.590702653
+      - 0.344096184
+      - -1.28202832
+      - 0.692764521
+      - 0.827853262
+      - 0.00000195965504
+      - 1.08169997
+      - -0.590699971
+      - -0.344199985
+      - 1.28190005
+      - -0.692799985
+      - -0.699999988
+      - 0.0
+    teleop_device: null
+  environment_builder:
+    language_instruction: Stack the bowls together.
+    num_envs: 1
+    seed: 42
+  policy:
+    type: isaaclab_arena_gr00t.policy.gr00t_remote_closedloop_policy.Gr00tRemoteClosedloopPolicy
+    policy_device: cuda:0
+    remote_host: 127.0.0.1
+    remote_port: 5557
+  rollout_limit:
+    num_episodes: 20
+  num_rebuilds: 1
+
+runs:
+  agibot_stack_bowls_gr00t_n17_denoise4_warmup26_20ep:
+    policy:
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_denoise4_config.yaml
+
+  agibot_stack_bowls_gr00t_n17_denoise8_warmup26_20ep:
+    policy:
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_config.yaml
+
+  agibot_stack_bowls_gr00t_n17_denoise16_warmup26_20ep:
+    policy:
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_denoise16_config.yaml
+
+  agibot_stack_bowls_gr00t_n17_denoise32_warmup26_20ep:
+    policy:
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_denoise32_config.yaml

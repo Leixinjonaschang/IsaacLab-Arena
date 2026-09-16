@@ -14,10 +14,16 @@ class Gr00tClosedloopPolicyCfg:
     """Configure GR00T closed-loop policy translation and inference."""
 
     language_instruction: str = field(
-        default="", metadata={"description": "Instruction given to the policy in natural language."}
+        default="",
+        metadata={
+            "description": "Instruction given to the policy in natural language."
+        },
     )
     action_horizon: int = field(
-        default=16, metadata={"description": "Number of actions in the policy's predictionhorizon."}
+        default=16,
+        metadata={
+            "description": "Number of actions in the policy's prediction horizon."
+        },
     )
     embodiment_tag: str = field(
         default="NEW_EMBODIMENT",
@@ -28,21 +34,35 @@ class Gr00tClosedloopPolicyCfg:
         },
     )
     denoising_steps: int = field(
-        default=4, metadata={"description": "Number of denoising steps used in the policy inference."}
+        default=4,
+        metadata={
+            "description": "Number of denoising steps used in the policy inference."
+        },
     )
     modality_config_path: str = field(
-        default=None, metadata={"description": "Path to the modality configuration file."}
+        default=None,
+        metadata={"description": "Path to the modality configuration file."},
     )
     original_image_size: tuple[int, int, int] = field(
-        default=(480, 640, 3), metadata={"description": "Original size of input images as (height, width, channels)."}
+        default=(480, 640, 3),
+        metadata={
+            "description": "Original size of input images as (height, width, channels)."
+        },
     )
     target_image_size: tuple[int, int, int] = field(
         default=(480, 640, 3),
-        metadata={"description": "Target size for images after resizing and padding as (height, width, channels)."},
+        metadata={
+            "description": "Target size for images after resizing and padding as (height, width, channels)."
+        },
     )
     policy_joints_config_path: Path = field(
-        default=Path(__file__).parent.resolve() / "config" / "g1" / "gr00t_43dof_joint_space.yaml",
-        metadata={"description": "Path to the YAML file specifying the joint ordering configuration for GR00T policy."},
+        default=Path(__file__).parent.resolve()
+        / "config"
+        / "g1"
+        / "gr00t_43dof_joint_space.yaml",
+        metadata={
+            "description": "Path to the YAML file specifying the joint ordering configuration for GR00T policy."
+        },
     )
     task_mode_name: str = field(
         default=TaskMode.G1_LOCOMANIPULATION.value,
@@ -50,7 +70,10 @@ class Gr00tClosedloopPolicyCfg:
     )
     # robot simulation specific parameters
     action_joints_config_path: Path = field(
-        default=Path(__file__).parent.parent.resolve() / "config" / "g1" / "43dof_joint_space.yaml",
+        default=Path(__file__).parent.parent.resolve()
+        / "config"
+        / "g1"
+        / "43dof_joint_space.yaml",
         metadata={
             "description": (
                 "Path to the YAML file specifying the joint ordering configuration for GR1 action space in Lab."
@@ -58,7 +81,10 @@ class Gr00tClosedloopPolicyCfg:
         },
     )
     state_joints_config_path: Path = field(
-        default=Path(__file__).parent.parent.resolve() / "config" / "g1" / "43dof_joint_space.yaml",
+        default=Path(__file__).parent.parent.resolve()
+        / "config"
+        / "g1"
+        / "43dof_joint_space.yaml",
         metadata={
             "description": (
                 "Path to the YAML file specifying the joint ordering configuration for GR1 state space in Lab."
@@ -67,12 +93,20 @@ class Gr00tClosedloopPolicyCfg:
     )
     # Default to GPU policy and CPU physics simulation
     policy_device: str = field(
-        default="cuda", metadata={"description": "Device to run the policy model on (e.g., 'cuda' or 'cpu')."}
+        default="cuda",
+        metadata={
+            "description": "Device to run the policy model on (e.g., 'cuda' or 'cpu')."
+        },
     )
-    video_backend: str = field(default="decord", metadata={"description": "Video backend to use for evaluation."})
+    video_backend: str = field(
+        default="decord",
+        metadata={"description": "Video backend to use for evaluation."},
+    )
     pov_cam_name_sim: list[str] = field(
         default_factory=lambda: ["robot_head_cam_rgb"],
-        metadata={"description": "Names of the POV cameras of the robot in simulation."},
+        metadata={
+            "description": "Names of the POV cameras of the robot in simulation."
+        },
     )
     # Closed loop specific parameters
     action_chunk_length: int = field(
@@ -81,12 +115,113 @@ class Gr00tClosedloopPolicyCfg:
             "description": "Number of actions to execute per inference rollout (can be less than action_horizon)."
         },
     )
-    seed: int = field(default=10, metadata={"description": "Random seed for reproducibility."})
+    action_sample_count: int = field(
+        default=1,
+        metadata={
+            "description": (
+                "Number of independent remote diffusion samples combined elementwise before execution. "
+                "Values above one reduce short-horizon variance at a proportional inference-cost increase."
+            )
+        },
+    )
+    action_chunk_translation_anchor_alpha: float = field(
+        default=0.0,
+        metadata={
+            "description": (
+                "Fraction of each AgiBot action chunk's first-frame EEF translation offset removed before "
+                "execution. One anchors the first predicted XYZ to the observed XYZ while preserving all "
+                "within-chunk translation deltas; zero leaves the model output unchanged."
+            )
+        },
+    )
+    initial_camera_warmup_steps: int = field(
+        default=0,
+        metadata={
+            "description": (
+                "Number of hold actions to execute after reset before the first inference, allowing mounted cameras "
+                "to publish images from their post-reset poses."
+            )
+        },
+    )
+    initial_agibot_ready_eef_9d: list[float] | None = field(
+        default=None,
+        metadata={
+            "description": (
+                "Optional pair of AgiBot training-frame XYZ+rot6d poses (18 values) commanded while cameras warm "
+                "up. Use this when the checkpoint demonstrations settle to a different pose after reset."
+            )
+        },
+    )
+    state_delay_steps: int = field(
+        default=0,
+        metadata={
+            "description": (
+                "Number of control steps by which the state sent to the policy trails the current video. "
+                "This should remain zero unless a checkpoint's training data has a measured state/video offset."
+            )
+        },
+    )
+    rtc_enabled: bool = field(
+        default=False,
+        metadata={
+            "description": (
+                "Enable GR00T N1.7 real-time chunking (RTC): feed the unexecuted tail of the "
+                "previous action horizon back to the diffusion head as an inpainting prior."
+            )
+        },
+    )
+    rtc_frozen_steps: int = field(
+        default=0,
+        metadata={
+            "description": (
+                "Number of leading RTC overlap steps held exactly fixed. Synchronous Arena inference "
+                "normally has no control-step latency, so zero is the appropriate default."
+            )
+        },
+    )
+    rtc_ramp_rate: float = field(
+        default=4.0,
+        metadata={
+            "description": "Exponential denoising-strength ramp used across the RTC overlap."
+        },
+    )
+    seed: int = field(
+        default=10, metadata={"description": "Random seed for reproducibility."}
+    )
 
     def __post_init__(self):
+        assert self.denoising_steps >= 1, "denoising_steps must be positive"
         assert (
             self.action_chunk_length <= self.action_horizon
         ), "action_chunk_length must be less than or equal to action_horizon"
+        assert self.action_sample_count >= 1, "action_sample_count must be positive"
+        assert 0.0 <= self.action_chunk_translation_anchor_alpha <= 1.0, (
+            "action_chunk_translation_anchor_alpha must be between 0 and 1"
+        )
+        assert (
+            self.initial_camera_warmup_steps >= 0
+        ), "initial_camera_warmup_steps must be non-negative"
+        assert self.state_delay_steps >= 0, "state_delay_steps must be non-negative"
+        assert self.rtc_frozen_steps >= 0, "rtc_frozen_steps must be non-negative"
+        assert self.rtc_ramp_rate > 0.0, "rtc_ramp_rate must be positive"
+        if self.rtc_enabled:
+            rtc_overlap_steps = self.action_horizon - self.action_chunk_length
+            assert (
+                rtc_overlap_steps > 0
+            ), "RTC requires action_chunk_length < action_horizon"
+            assert (
+                self.rtc_frozen_steps <= rtc_overlap_steps
+            ), "rtc_frozen_steps must not exceed action_horizon - action_chunk_length"
+        if self.initial_agibot_ready_eef_9d is not None:
+            assert (
+                self.task_mode_name == TaskMode.AGIBOT_BIMANUAL_MANIPULATION.value
+            ), "initial_agibot_ready_eef_9d only supports AgiBot bimanual manipulation"
+            assert (
+                self.initial_camera_warmup_steps > 0
+            ), "initial_agibot_ready_eef_9d requires initial_camera_warmup_steps > 0"
+            assert (
+                len(self.initial_agibot_ready_eef_9d) == 18
+            ), "initial_agibot_ready_eef_9d must contain 18 values"
         # assert all paths exist
         assert Path(
             self.policy_joints_config_path
@@ -96,11 +231,15 @@ class Gr00tClosedloopPolicyCfg:
         ).exists(), f"action_joints_config_path does not exist: {self.action_joints_config_path}"
         assert Path(
             self.state_joints_config_path
-        ).exists(), f"state_joints_config_path does not exist: {self.state_joints_config_path}"
+        ).exists(), (
+            f"state_joints_config_path does not exist: {self.state_joints_config_path}"
+        )
         if self.modality_config_path:
             assert Path(
                 self.modality_config_path
-            ).exists(), f"modality_config_path does not exist: {self.modality_config_path}"
+            ).exists(), (
+                f"modality_config_path does not exist: {self.modality_config_path}"
+            )
 
         if isinstance(self.pov_cam_name_sim, str):
             self.pov_cam_name_sim = [self.pov_cam_name_sim]
@@ -120,7 +259,9 @@ class Gr00tClosedloopPolicyCfg:
                 self.embodiment_tag == "NEW_EMBODIMENT"
             ), "embodiment_tag must be new_embodiment for G1 locomanipulation"
         elif self.task_mode_name == TaskMode.GR1_TABLETOP_MANIPULATION.value:
-            assert self.embodiment_tag == "GR1", "embodiment_tag must be GR1 for GR1 tabletop manipulation"
+            assert (
+                self.embodiment_tag == "GR1"
+            ), "embodiment_tag must be GR1 for GR1 tabletop manipulation"
         elif self.task_mode_name == TaskMode.DROID_MANIPULATION.value:
             # GR00T N1.6 calls this embodiment OXE_DROID; N1.7 calls the same robot
             # OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT. Both drive the same sim-side action space, so
@@ -128,6 +269,11 @@ class Gr00tClosedloopPolicyCfg:
             assert self.embodiment_tag.startswith("OXE_DROID"), (
                 "embodiment_tag must be a DROID tag (OXE_DROID for GR00T N1.6,"
                 " OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT for N1.7) for DROID manipulation, got"
+                f" '{self.embodiment_tag}'"
+            )
+        elif self.task_mode_name == TaskMode.AGIBOT_BIMANUAL_MANIPULATION.value:
+            assert self.embodiment_tag == "NEW_EMBODIMENT", (
+                "embodiment_tag must be NEW_EMBODIMENT for AgiBot bimanual manipulation, got"
                 f" '{self.embodiment_tag}'"
             )
         else:

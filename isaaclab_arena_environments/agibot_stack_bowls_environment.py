@@ -10,10 +10,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from isaaclab_arena.assets.register import register_environment
-from isaaclab_arena.environments.arena_environment_factory import ArenaEnvironmentCfg, ArenaEnvironmentFactory
+from isaaclab_arena.environments.arena_environment_factory import (
+    ArenaEnvironmentCfg,
+    ArenaEnvironmentFactory,
+)
 
 if TYPE_CHECKING:
-    from isaaclab_arena.environments.isaaclab_arena_environment import IsaacLabArenaEnvironment
+    from isaaclab_arena.environments.isaaclab_arena_environment import (
+        IsaacLabArenaEnvironment,
+    )
 
 # Agibot base. Same standoff as tabletop_place_upright, the reference Agibot environment.
 _ROBOT_POSITION_XYZ = (-0.60, 0.0, 0.0)
@@ -46,12 +51,23 @@ _BOWL_POSITIONS_XY = ((0.43, -0.16), (0.43, 0.16), (0.37, 0.00))
 _BOWL_X_BAND_M = (0.35, 0.45)
 """The x band the arm was measured to reach at table height; jittered bowls are clamped into it."""
 
+_DUAL_ARM_JOINT_NAMES = tuple(
+    [f"left_arm_joint{index}" for index in range(1, 8)]
+    + [f"right_arm_joint{index}" for index in range(1, 8)]
+)
+"""Recorded arm-joint order used by AgiBot's dual-arm demonstrations."""
+
 _BOWL_MIN_SEPARATION_M = 0.14
 """Smallest allowed distance between jittered bowls: the 0.11 m diameter plus a contact margin."""
 
 
 def _jitter_bowls(
-    env, env_ids, asset_names: list[str], nominal_xy: list[tuple[float, float]], z_m: float, xy_half_m: list[float]
+    env,
+    env_ids,
+    asset_names: list[str],
+    nominal_xy: list[tuple[float, float]],
+    z_m: float,
+    xy_half_m: list[float],
 ) -> None:
     """Reset event: re-place the bowls with a biased xy jitter, upright, a minimum distance apart.
 
@@ -67,11 +83,15 @@ def _jitter_bowls(
     import isaaclab.utils.math as math_utils
 
     count = len(asset_names)
-    half = torch.tensor(xy_half_m).unsqueeze(1)  # per-bowl half-extent, applied to both axes
+    half = torch.tensor(xy_half_m).unsqueeze(
+        1
+    )  # per-bowl half-extent, applied to both axes
     for cur_env in env_ids.tolist():
         xy = torch.tensor(nominal_xy)
         for _ in range(200):
-            candidate = torch.tensor(nominal_xy) + (torch.rand(count, 2) * 2.0 - 1.0) * half
+            candidate = (
+                torch.tensor(nominal_xy) + (torch.rand(count, 2) * 2.0 - 1.0) * half
+            )
             candidate[:, 0] = candidate[:, 0].clamp(*_BOWL_X_BAND_M)
             separations = torch.cdist(candidate, candidate) + torch.eye(count)
             if float(separations.min()) >= _BOWL_MIN_SEPARATION_M:
@@ -79,11 +99,19 @@ def _jitter_bowls(
                 break
         for name, position_xy in zip(asset_names, xy):
             yaw = torch.rand(1) * 2.0 * math.pi - math.pi
-            quat = math_utils.quat_from_euler_xyz(torch.zeros(1), torch.zeros(1), yaw).to(env.device)
-            position = torch.tensor([[float(position_xy[0]), float(position_xy[1]), z_m]], device=env.device)
-            root_pose = torch.cat([position + env.scene.env_origins[cur_env : cur_env + 1], quat], dim=-1).float()
+            quat = math_utils.quat_from_euler_xyz(
+                torch.zeros(1), torch.zeros(1), yaw
+            ).to(env.device)
+            position = torch.tensor(
+                [[float(position_xy[0]), float(position_xy[1]), z_m]], device=env.device
+            )
+            root_pose = torch.cat(
+                [position + env.scene.env_origins[cur_env : cur_env + 1], quat], dim=-1
+            ).float()
             asset = env.scene[name]
-            asset.write_root_pose_to_sim_index(root_pose=root_pose, env_ids=torch.tensor([cur_env], device=env.device))
+            asset.write_root_pose_to_sim_index(
+                root_pose=root_pose, env_ids=torch.tensor([cur_env], device=env.device)
+            )
             asset.write_root_velocity_to_sim_index(
                 root_velocity=torch.zeros(1, 6, device=env.device),
                 env_ids=torch.tensor([cur_env], device=env.device),
@@ -116,6 +144,19 @@ class AgibotStackBowlsEnvironmentCfg(ArenaEnvironmentCfg):
 
     RoboDojo teleoperates stack_bowls with two arms, and some starting layouts are hard to solve
     with one, so both are driven by default."""
+
+    action_mode: str = "relative_eef"
+    """Controller interface for teleoperation, N1.7 evaluation, or joint-replay diagnostics."""
+
+    policy_ready_arm_joint_positions: list[float] | None = None
+    """Optional absolute 14-joint pose at the policy's first observation.
+
+    This is applied as a reset event after restoring the articulation defaults, so
+    ``joint_pos_rel`` keeps the same reference used during data collection.  It is intended for
+    policies whose demonstrations contain a deterministic startup move before the first model
+    observation; configuring the articulation default itself would incorrectly make that move
+    appear as zero joint displacement.
+    """
 
     teleop_pos_sensitivity: float = 0.03
     """Metres of commanded end-effector motion per held key, per control step.
@@ -217,11 +258,16 @@ def _apply_arm_gains(env_cfg, cfg: AgibotStackBowlsEnvironmentCfg) -> None:
             # Isaac Lab warns and picks one arbitrarily.
             if key == "effort_limit_sim":
                 actuator.effort_limit = value
-        print(f"[arm gains] {name}: " + ", ".join(f"{k}={v:g}" for k, v in overrides.items()))
+        print(
+            f"[arm gains] {name}: "
+            + ", ".join(f"{k}={v:g}" for k, v in overrides.items())
+        )
 
 
 @register_environment
-class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnvironmentCfg]):
+class AgibotStackBowlsEnvironment(
+    ArenaEnvironmentFactory[AgibotStackBowlsEnvironmentCfg]
+):
     """Stack three bowls into one pile with the Agibot."""
 
     name: str = "agibot_stack_bowls"
@@ -232,7 +278,9 @@ class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnviro
         import isaaclab.sim as sim_utils
 
         from isaaclab_arena.embodiments.common.arm_mode import ArmMode
-        from isaaclab_arena.environments.isaaclab_arena_environment import IsaacLabArenaEnvironment
+        from isaaclab_arena.environments.isaaclab_arena_environment import (
+            IsaacLabArenaEnvironment,
+        )
         from isaaclab_arena.scene.scene import Scene
         from isaaclab_arena.tasks.stack_bowls_task import StackBowlsTask
         from isaaclab_arena.utils.arm_target_hold import install_arm_target_hold
@@ -242,7 +290,11 @@ class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnviro
         background = table_asset()
         background.set_initial_pose(
             Pose(
-                position_xyz=(_TABLE_POSITION_X, 0.0, _TABLE_TOP_Z - table_asset.HALF_THICKNESS_M),
+                position_xyz=(
+                    _TABLE_POSITION_X,
+                    0.0,
+                    _TABLE_TOP_Z - table_asset.HALF_THICKNESS_M,
+                ),
                 rotation_xyzw=(0.0, 0.0, 0.0, 1.0),
             )
         )
@@ -254,15 +306,34 @@ class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnviro
         bowls = []
         for index in range(cfg.num_bowls):
             x, y = _BOWL_POSITIONS_XY[index]
-            bowl = self.asset_registry.get_asset_by_name("bowl")(instance_name=f"bowl{index}")
-            bowl.set_initial_pose(Pose(position_xyz=(x, y, _BOWL_Z), rotation_xyzw=(0.0, 0.0, 0.0, 1.0)))
+            bowl = self.asset_registry.get_asset_by_name("bowl")(
+                instance_name=f"bowl{index}"
+            )
+            bowl.set_initial_pose(
+                Pose(position_xyz=(x, y, _BOWL_Z), rotation_xyzw=(0.0, 0.0, 0.0, 1.0))
+            )
             bowls.append(bowl)
 
-        arm_mode = {"left": ArmMode.LEFT, "right": ArmMode.RIGHT, "dual": ArmMode.DUAL_ARM}[cfg.arm_mode]
+        arm_mode = {
+            "left": ArmMode.LEFT,
+            "right": ArmMode.RIGHT,
+            "dual": ArmMode.DUAL_ARM,
+        }[cfg.arm_mode]
+        if cfg.policy_ready_arm_joint_positions is not None:
+            assert (
+                cfg.arm_mode == "dual"
+            ), "policy_ready_arm_joint_positions requires arm_mode='dual'"
+            assert len(cfg.policy_ready_arm_joint_positions) == len(
+                _DUAL_ARM_JOINT_NAMES
+            ), "policy_ready_arm_joint_positions must contain 14 values in left-arm then right-arm order"
         embodiment = self.asset_registry.get_asset_by_name(cfg.embodiment)(
-            enable_cameras=cfg.enable_cameras, arm_mode=arm_mode
+            enable_cameras=cfg.enable_cameras,
+            arm_mode=arm_mode,
+            action_mode=cfg.action_mode,
         )
-        embodiment.set_initial_pose(Pose(position_xyz=_ROBOT_POSITION_XYZ, rotation_xyzw=(0.0, 0.0, 0.0, 1.0)))
+        embodiment.set_initial_pose(
+            Pose(position_xyz=_ROBOT_POSITION_XYZ, rotation_xyzw=(0.0, 0.0, 0.0, 1.0))
+        )
 
         if cfg.teleop_device is not None:
             teleop_device = self.device_registry.get_device_by_name(cfg.teleop_device)(
@@ -294,13 +365,32 @@ class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnviro
             and attach the bowls' biased group jitter after their own reset events."""
             install_arm_target_hold(env_cfg)
             _apply_arm_gains(env_cfg, cfg)
+            if cfg.policy_ready_arm_joint_positions is not None:
+                from isaaclab.managers import EventTermCfg
+
+                from isaaclab_arena.terms.events import (
+                    reset_joint_position_and_velocity_to_pose,
+                )
+
+                env_cfg.events.reset_robot_to_policy_ready_pose = EventTermCfg(
+                    func=reset_joint_position_and_velocity_to_pose,
+                    mode="reset",
+                    params={
+                        "joint_names": _DUAL_ARM_JOINT_NAMES,
+                        "joint_positions": cfg.policy_ready_arm_joint_positions,
+                    },
+                )
             if cfg.bowl_jitter_xy_m:
                 from isaaclab.managers import EventTermCfg
 
                 # The centre bowl -- index 2 in the layout, the (0.37, 0.00) one -- gets its own
                 # tighter half-extent; see centre_bowl_jitter_xy_m.
                 per_bowl = [
-                    min(cfg.bowl_jitter_xy_m, cfg.centre_bowl_jitter_xy_m) if index == 2 else cfg.bowl_jitter_xy_m
+                    (
+                        min(cfg.bowl_jitter_xy_m, cfg.centre_bowl_jitter_xy_m)
+                        if index == 2
+                        else cfg.bowl_jitter_xy_m
+                    )
                     for index in range(cfg.num_bowls)
                 ]
                 env_cfg.events.jitter_bowls = EventTermCfg(
@@ -308,7 +398,10 @@ class AgibotStackBowlsEnvironment(ArenaEnvironmentFactory[AgibotStackBowlsEnviro
                     mode="reset",
                     params={
                         "asset_names": [bowl.name for bowl in bowls],
-                        "nominal_xy": [list(_BOWL_POSITIONS_XY[index]) for index in range(cfg.num_bowls)],
+                        "nominal_xy": [
+                            list(_BOWL_POSITIONS_XY[index])
+                            for index in range(cfg.num_bowls)
+                        ],
                         "z_m": _BOWL_Z,
                         "xy_half_m": per_bowl,
                     },

@@ -1,0 +1,40 @@
+# Copyright (c) 2026, The Isaac Lab Arena Project Developers (https://github.com/isaac-sim/IsaacLab-Arena/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# One-episode controlled comparison to the denoise-4/8 runs. Runtime sets warmup=26.
+runs:
+  agibot_stack_bowls_gr00t_n17_denoise16_warmup26:
+    environment:
+      type: agibot_stack_bowls
+      enable_cameras: true
+      embodiment: agibot
+      arm_mode: dual
+      action_mode: gr00t_diffik
+      policy_ready_arm_joint_positions:
+        - -1.08173466
+        - 0.590702653
+        - 0.344096184
+        - -1.28202832
+        - 0.692764521
+        - 0.827853262
+        - 0.00000195965504
+        - 1.08169997
+        - -0.590699971
+        - -0.344199985
+        - 1.28190005
+        - -0.692799985
+        - -0.699999988
+        - 0.0
+      teleop_device: null
+    environment_builder:
+      language_instruction: Stack the bowls together.
+    policy:
+      type: isaaclab_arena_gr00t.policy.gr00t_remote_closedloop_policy.Gr00tRemoteClosedloopPolicy
+      policy_config_yaml_path: isaaclab_arena_gr00t/policy/config/agibot_n17_gr00t_closedloop_denoise16_config.yaml
+      policy_device: cuda:0
+      remote_host: 127.0.0.1
+      remote_port: 5557
+    rollout_limit:
+      num_episodes: 1

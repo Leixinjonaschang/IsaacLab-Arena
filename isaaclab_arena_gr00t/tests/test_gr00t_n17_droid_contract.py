@@ -86,6 +86,8 @@ class _FakeClient:
 
     def __init__(self, *args, **kwargs):
         self.last_observation: dict[str, Any] | None = None
+        self.last_options: dict[str, Any] | None = None
+        self.last_reset_options: dict[str, Any] | None = None
         self.modality_configs = self.modality_config_override or _droid_remote_config()
 
     def ping(self) -> bool:
@@ -94,8 +96,9 @@ class _FakeClient:
     def get_modality_config(self):
         return self.modality_configs
 
-    def get_action(self, observation):
+    def get_action(self, observation, options: dict[str, Any] | None = None):
         self.last_observation = observation
+        self.last_options = options
         horizon = len(self.modality_configs["action"].delta_indices)
         response = {
             group: np.random.randn(NUM_ENVS, horizon, size).astype(np.float32)
@@ -103,9 +106,13 @@ class _FakeClient:
         }
         # The server also returns eef_9d for this embodiment; Arena drives the sim from the joints.
         response["eef_9d"] = np.random.randn(NUM_ENVS, horizon, 9).astype(np.float32)
-        return response, None
+        info = {
+            "num_inference_timesteps": None if options is None else options.get("num_inference_timesteps")
+        }
+        return response, info
 
-    def reset(self):
+    def reset(self, options: dict[str, Any] | None = None):
+        self.last_reset_options = options
         pass
 
 

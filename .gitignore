@@ -106,3 +106,5 @@ core.*
 .venv*/
 
 .codegraph/
+
+results/
